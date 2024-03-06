@@ -1,0 +1,300 @@
+---
+title: "Linear regression"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+```
+
+
+The prediction task: to predict the amount of calories in Starbucks' drinks based on the other available nutritional data.
+
+### Load and inspect the data
+
+The data originates from the [Starbucks menu data set](https://www.kaggle.com/datasets/starbucks/starbucks-menu). It has been adapted for the class.  
+
+Load the data
+```{r}
+starbucks <- read.csv("data/starbucks_calories.csv", encoding="UTF-8")
+```
+
+Inspect the data
+```{r}
+str(starbucks)
+```
+
+```{r}
+# View(starbucks)
+```
+
+As the first step, we will do the prediction based on just one variable (simple regression) and then will expand to all potentially relevant variables (multiple regression).
+
+### Examining relationships among variables
+
+Let's start examining the correlations among the variables. In particular, we are primarily interested in correlations between the outcome variable (calories) and other variables that may serve as predictors.
+
+Select variables that might be used for predicting calories 
+```{r}
+sb_calories = starbucks[, 3:7]
+```
+
+Compute correlations
+```{r}
+sb_cor = cor(sb_calories)
+sb_cor
+```
+
+We can also plot this matrix to make it easier for inspection 
+
+```{r}
+corrplot.mixed(sb_cor)
+```
+
+Clearly all selected variables are highly correlated with `calories`, but especially `sugar`. Let's inspect that closer.
+
+```{r}
+ggplot(data = starbucks,
+       mapping = aes(x = sugar, y = calories)) +
+  geom_point(color="skyblue") +
+  geom_smooth(method = "lm", se=FALSE) +
+  theme_minimal()
+```
+
+It seems that sugar and calories have fine linear relationship, thus satisfying the primary criterion for the application of linear modeling. 
+
+
+### Train-test split
+
+Before going any further, we first need to split the data into training and test sets. 
+We will build our models using training data only, while test data will be used for model evaluation.
+
+There are 2 key requirements when splitting the data into training and test sets:
+1) random selection of observations to go into training and test sets
+2) ensuring the same distribution of the outcome variable in both parts (train and test)
+We can achieve both things by using the `createDataPartition` function from the `caret` package.
+```{r message=FALSE}
+library(caret)
+```
+
+```{r}
+set.seed(2024)
+training_indices = createDataPartition(sb_calories$calories, p = 0.75, list = FALSE)
+sb_train = sb_calories[training_indices, ]
+sb_test = sb_calories[-training_indices, ]
+```
+
+Check the distribution of the calories variable on the train and test sets
+```{r}
+summary(sb_train$calories)
+```
+
+```{r}
+summary(sb_test$calories)
+```
+We can do that visually as well
+```{r}
+ggplot() +
+  geom_density(data = sb_train, mapping = aes(x=calories), color = "skyblue") +
+  geom_density(data = sb_test, mapping = aes(x=calories), color = "orange") +
+  labs(title = "Distribution of the calories variable on the train and test sets") +
+  theme_minimal()
+```
+
+### Simple linear regression
+
+Create the model
+```{r}
+lm1 = lm(calories ~ sugar, data = sb_train)
+```
+
+Print the model
+```{r}
+summary(lm1)
+```
+
+Get the estimated paramter values
+```{r}
+coef(lm1)
+```
+
+and the confidence interval for the parameters...
+```{r}
+confint(lm1, level = 0.95)
+```
+We would interpret this as follows: in 95% of samples taken from the population of Starbucks drinks, the estimated value of the parameter associated with the sugar variable will be in the (4.53, 5.18) range.   
+
+
+Plot the regression line
+```{r}
+b0 = as.numeric(coef(lm1)[1])
+b1 = as.numeric(coef(lm1)[2])
+
+ggplot(data = sb_train,
+       mapping = aes(x = sugar, y = calories)) +
+  geom_point(color = "violet") +
+  geom_abline(intercept = b0, slope = b1) +
+  theme_minimal()
+```
+
+Check if the assumptions for linear models are met, using the `plot` function. The function will create 4 plots:
+
+* The 1st plot, **Residual vs Fitted value**, is used for checking if the linearity assumption is satisfied. 
+* The 2nd plot, **Normal Q-Q plot**, tells us if residuals are normally distributed. 
+* The 3rd plot, **Scale-Location**, is used for checking the assumption - known as homoscedasticity - that the residuals have equal variance.
+* The 4th plot, **Residuals vs Leverage**, is used for spotting the presence of highly influential observations; those are the observations that, if included in or excluded from the model, can significantly affect the values of the model parameters. Such observations are identified among those with unusually high/low output values (outliers) and/or unusually high/low predictor values (high leverage). 
+
+```{r}
+plot(lm1)
+```
+
+```{r}
+hist(residuals(lm1))
+```
+So, out of the four assumptions, one is not satisfied - normality of residuals. This may affect the prediction intervals (see below), that is, lead to incorrect confidence and prediction intervals, since those intervals are calculated based on the assumption that the residuals are normally distributed.
+
+Make predictions and evaluate the model on the test data
+```{r}
+lm1_predicted = predict(lm1, newdata = sb_test)
+```
+
+```{r}
+sb_test |> select(sugar, calories) |> mutate(calories_pred = lm1_predicted) |> head()
+```
+
+
+We can also get **confidence** and **prediction** intervals for our predictions
+```{r}
+lm1_pred_ci = predict(lm1, newdata = sb_test, interval = "confidence", level = 0.95)
+sb_test |> select(sugar, calories) |> cbind(lm1_pred_ci) |> head()
+```
+**Confidence intervals** reflects the uncertainty around the mean predictions. For example, for a drink with 9g of sugar the expected (mean) value of calories will range between 68.77 and 88.28
+
+```{r}
+lm1_pred_pi = predict(lm1, newdata = sb_test, interval = "prediction", level = 0.95)
+sb_test |> select(sugar, calories) |> cbind(lm1_pred_pi) |> head()
+```
+
+**Prediction interval** reflects uncertainty related to a particular instance. For example, for a particular drink with 9g of sugar the value of calories will range between -6.12 and 123.18. However, note that due to the lack of normality of residuals (the assumption that was violated), the prediction intervals for this particular model can be considered trustworthy
+
+
+To evaluate the model, we will compute - on the test set - two evaluation measures: R2 and RMSE
+
+R2 = (TSS - RSS)/TSS
+RMSE = sqrt(RSS/n)
+```{r}
+compute_eval_measures <- function(y_train, y_test, y_pred) {
+  tss = sum((y_test - mean(y_train))^2)
+  rss = sum((y_test - y_pred)^2)
+  r2 = (tss - rss)/tss
+  
+  n = length(y_test)
+  rmse = sqrt(rss/n)
+  
+  return(c(R2=r2, RMSE=rmse))
+}
+```
+
+```{r}
+lm1_eval = compute_eval_measures(y_train = sb_train$calories,
+                                 y_test = sb_test$calories,
+                                 y_pred = lm1_predicted)
+```
+
+
+```{r}
+round(lm1_eval, 4)
+```
+
+To get a perspective of how large the error is, we'll compare it with the mean value of the response variable on the test set.
+```{r}
+lm1_rmse = as.numeric(lm1_eval['RMSE'])
+lm1_rmse/mean(sb_test$calories)
+```
+It's a fairly large error - about 22% of the average value.
+
+
+### Multiple linear regression
+
+We've seen that in addition to `sugar`, the other three variables are also highly correlated with  `calories` (as the outcome variable). Let's see if by adding them to the model we can improve the prediction performance.
+
+```{r}
+lm2 = lm(calories ~ fat_tot + sugar + proteins + carbohydrates_tot, data = sb_train)
+summary(lm2)
+```
+
+Note that in the presence of `sugar`, `carbohydrates_tot` are not relevant for the prediction of calories. This is intuitively clear, but might also be explained by the high correlation of `sugar` and `carbohydrates_tot` variables (see the correlations plot above). 
+This points to a potential problem of **multicollinearity** that is often present in case of multiple linear regression and should be avoided as it tends to make the resulting model unstable and/or plainly wrong.
+
+Let's check if we have the case of multicollinearity in our data
+```{r}
+library(performance)
+```
+
+One way to check for multicollinearity is to compute the **Variance Inflation Factor (VIF)**:
+```{r}
+lm2_collinearity = check_collinearity(lm2)
+lm2_collinearity
+```
+**Variance Inflation Factor (VIF)** is an often used way to check for multicollinearity. If the VIF value of a variable is high, it means the information in that variable is already explained by other predictors present in the given model, which means that the variable is redundant. If interested in how VIF is computed, [this article](https://statisticsbyjim.com/regression/variance-inflation-factors/) offers a nice and simple explanation.
+
+As a rule of thumb, variables having $\sqrt{VIF} > 2$ are problematic. Here, it is not the case. When it is the case, we remove the variable with the high VIF value from the data set and build a new model without it. If there are several such variables, we remove them in a step-wise manner, starting from the one with the highest VIF value.   
+
+Even though the presence of the `carbohydrates_tot` variable is not causing the problem of multicollinearity and from that perspective can be kept in the model, it proved to be irrelevant for the prediction of the outcome variable and thus it should be better removed from the model. As a general rule, if two (or more) models are of similar performance, it is better to keep the simpler model, since such a model is less prone to overfitting.
+
+```{r}
+lm3 = lm(calories ~ fat_tot + sugar + proteins, data = sb_train)
+summary(lm3)
+```
+
+Check the four assumtions of linear models:
+```{r}
+plot(lm2)
+```
+
+```{r}
+hist(residuals(lm2))
+```
+This time, all assumptions hold
+
+Let's check **confidence** and **prediction** intervals for predictions based on this new model; this time, the intervals should be trustworthy since the all the assumptions are satisfied
+```{r}
+lm3_pred_ci = predict(lm3, newdata = sb_test, interval = "confidence", level = 0.95)
+sb_test |> select(sugar, calories) |> cbind(lm3_pred_ci) |> head()
+```
+
+```{r}
+lm3_pred_pi = predict(lm3, newdata = sb_test, interval = "predict", level = 0.95)
+sb_test |> select(sugar, calories) |> cbind(lm3_pred_pi) |> head()
+```
+
+We will now make predictions on the test set and compute evaluation measures
+```{r}
+lm3_predicted = predict(lm3, newdata = sb_test)
+```
+
+```{r}
+lm3_eval = compute_eval_measures(y_train = sb_train$calories,
+                                 y_test = sb_test$calories,
+                                 y_pred = lm3_predicted)
+round(lm3_eval, 4)
+```
+
+```{r}
+lm3_rmse = as.numeric(lm3_eval['RMSE'])
+lm3_rmse/mean(sb_test$calories)
+```
+
+
+Compare the performance of the latest model with the initial model
+```{r}
+rbind(lm1_eval, lm3_eval) |> round(4)
+```
+Obviously the latest model is much better than the initial one.
+
+**Note**: linear regression is not restricted to numerical variables; that is, a linear model can be built with categorical variables, as well, or a mix of numerical and categorical variables. However, model interpretation in that case is more difficult than when only numerical variables are used and thus is out of the scope of this course.    

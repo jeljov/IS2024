@@ -21,12 +21,12 @@ The data originates from the [Starbucks menu data set](https://www.kaggle.com/da
 
 Load the data
 ```{r}
-starbucks <- read.csv("data/starbucks_calories.csv", encoding="UTF-8")
+starbucks <- read.csv("data/starbucks_calories.csv")
 ```
 
 Inspect the data
 ```{r}
-str(starbucks)
+glimpse(starbucks)
 ```
 
 ```{r}
@@ -164,7 +164,7 @@ lm1_predicted = predict(lm1, newdata = sb_test)
 ```
 
 ```{r}
-sb_test |> select(sugar, calories) |> mutate(calories_pred = lm1_predicted) |> head()
+sb_test |> select(sugar, calories) |> mutate(calories_pred = lm1_predicted) |> head(10)
 ```
 
 
@@ -173,14 +173,15 @@ We can also get **confidence** and **prediction** intervals for our predictions
 lm1_pred_ci = predict(lm1, newdata = sb_test, interval = "confidence", level = 0.95)
 sb_test |> select(sugar, calories) |> cbind(lm1_pred_ci) |> head()
 ```
-**Confidence intervals** reflects the uncertainty around the mean predictions. For example, for a drink with 9g of sugar the expected (mean) value of calories will range between 68.77 and 88.28
+**Confidence intervals (CI)** reflects the uncertainty around the mean predictions. This uncertainty is due to the fact that we can only *estimate* values of the model parameters, but cannot determine the "true" or "ideal" values of those parameters. Consequently, the predictions made by our model will deviate from the predictions that the "ideal" linear model would make; this error is captured by the CI. For example, if we consider a CI of 95%, we can say that in 95% of drinks with 9g of sugar (see the 1st row in the table above), the expected (mean) number of calories will range between 68.77 and 88.28.
 
 ```{r}
 lm1_pred_pi = predict(lm1, newdata = sb_test, interval = "prediction", level = 0.95)
 sb_test |> select(sugar, calories) |> cbind(lm1_pred_pi) |> head()
 ```
 
-**Prediction interval** reflects uncertainty related to a particular instance. For example, for a particular drink with 9g of sugar the value of calories will range between -6.12 and 123.18. However, note that due to the lack of normality of residuals (the assumption that was violated), the prediction intervals for this particular model can be considered trustworthy
+**Prediction interval (PI)** reflects uncertainty related to a particular instance. This uncertainty is due to not only the fact that we can only *estimate* values of the model parameters (as in case of CI), but also due to the fact that even the best linear model is just an approximation of the true relationship between the input and output variables. Hence, PI captures both the reducible and irreducible error, and thus is always wider than CI.  
+For example, if we consider a PI of 95%, we can say that in 95% of cases, for a particular drink with 9g of sugar, the number of calories will range between -6.12 and 123.18. However, note that due to the lack of normality of residuals (the assumption that was violated), the prediction intervals for this particular model can be considered trustworthy.
 
 
 To evaluate the model, we will compute - on the test set - two evaluation measures: R2 and RMSE
@@ -252,7 +253,7 @@ lm3 = lm(calories ~ fat_tot + sugar + proteins, data = sb_train)
 summary(lm3)
 ```
 
-Check the four assumtions of linear models:
+Check the four assumptions of linear models:
 ```{r}
 plot(lm2)
 ```
@@ -265,20 +266,18 @@ This time, all assumptions hold
 Let's check **confidence** and **prediction** intervals for predictions based on this new model; this time, the intervals should be trustworthy since the all the assumptions are satisfied
 ```{r}
 lm3_pred_ci = predict(lm3, newdata = sb_test, interval = "confidence", level = 0.95)
-sb_test |> select(sugar, calories) |> cbind(lm3_pred_ci) |> head()
+sb_test |> select(fat_tot, sugar, proteins, calories) |> cbind(lm3_pred_ci) |> head()
 ```
 
 ```{r}
 lm3_pred_pi = predict(lm3, newdata = sb_test, interval = "predict", level = 0.95)
-sb_test |> select(sugar, calories) |> cbind(lm3_pred_pi) |> head()
+sb_test |> select(fat_tot, sugar, proteins, sugar, calories) |> cbind(lm3_pred_pi) |> head()
 ```
 
 We will now make predictions on the test set and compute evaluation measures
 ```{r}
 lm3_predicted = predict(lm3, newdata = sb_test)
-```
 
-```{r}
 lm3_eval = compute_eval_measures(y_train = sb_train$calories,
                                  y_test = sb_test$calories,
                                  y_pred = lm3_predicted)

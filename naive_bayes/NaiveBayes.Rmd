@@ -1,0 +1,305 @@
+---
+title: 'Classification task: Naive Bayes (NB)'
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+The prediction task: to predict which mobile phones can be soled for a high price. 
+The rationale: help a company determine its price policy; more precisely, help it identify which phones it can offer to its customers on a high price.  
+
+The algorithm to use: Naive Bayes (NB)
+
+### Load and inspect the data
+
+The data originates from the [Mobile Price Classification dataset](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification), where further information about the data set can be found, including the description of all the variables. 
+Note: the original data set has been adapted for this class.  
+
+Load the data
+```{r}
+mobiles_ds <- read.csv("data/mobiles.csv")
+```
+
+Inspect the data
+```{r}
+str(mobiles_ds)
+```
+
+```{r}
+summary(mobiles_ds)
+```
+
+We will use the `price_range` variable to create the outcome variable:
+```{r}
+table(mobiles_ds$price_range)
+```
+
+Create the outcome variable - `top_price` - by considering that `price_range` value of 3 denotes top price: 
+```{r}
+mobiles_ds$top_price = ifelse(test = mobiles_ds$price_range == 3, 
+                              yes="Yes", no="No")
+mobiles_ds$top_price[1:10]
+```
+
+Transform the outcome variable into factor, as required for the classification task
+```{r}
+mobiles_ds$top_price = as.factor(mobiles_ds$top_price)
+mobiles_ds$top_price[1:10]
+```
+
+Remove from the data set the variable used for creating the outcome variable
+```{r}
+mobiles_ds$price_range = NULL
+```
+
+
+### Data preparation
+
+To prepare the data for Naive Bayes algorithm we need to:
+
+* transform categorical variables into factors
+* examine the distribution of numerical variables: variables with normal distribution (if any) can be directly used, while those that are not normally distributed need to be discretized
+
+First, transform categorical variables
+```{r}
+mobiles_ds$color = as.factor(mobiles_ds$color)
+mobiles_ds$four_g = factor(mobiles_ds$four_g, levels = c(0,1), labels = c("No","Yes"))
+mobiles_ds$dual_sim = factor(mobiles_ds$dual_sim, levels = c(0,1), labels = c("No","Yes"))
+```
+
+Next, check if numerical variables are normally distributed
+```{r}
+numeric_var_indices = c(1,2,4:10)
+apply(mobiles_ds[,numeric_var_indices], 2, function(x) shapiro.test(x)$p.value >= 0.05)
+```
+None is normally distributed, meaning that we will have to discretize all numerical variables.
+
+To do the discretization seamlessly, we'll use the *discretize* f. from the *bnlearn* R package.
+```{r message=FALSE}
+library(bnlearn)
+
+?discretize
+```
+
+The `discretize` function performs *unsupervised discretization*, which consists of dividing the value range of a continuous variable into sub-ranges (intervals) without taking into account the outcome variable or any other information. Specifically, it splits the value range of a numerical variable into *k* intervals, where *k* is given as the input parameter. The function can do the splitting in different ways, among which the following two are often used: 
+
+*   split into *k* intervals of (roughly) equal lengths - this is known as *interval discretization*
+*   split into *k* intervals so that all intervals have (roughly) equal number of values - this is known as *quantile discretization*
+
+Quantile discretization is often recommended as it tends to lead to better results. So, we will use it here.  
+
+We will try to split all numerical variables into 5 intervals (bins) since this is a typically used number of bins for data sets of the size such as ours (if we had more observations, we could have opted for having more bins). 
+
+```{r}
+mobiles_num = mobiles_ds[, numeric_var_indices]
+
+# note that the discretize function requires a data frame with all numeric columns
+apply(mobiles_num, 2, as.numeric) |> as.data.frame() -> mobiles_num
+
+# mobiles_num_disc = discretize(data = mobiles_num,
+#                          method = "quantile",
+#                          breaks = 5)
+```
+Notice that the `clock_speed` variable could not be split into 5 segments of relatively equal frequencies. To understand why this is the case, we need to examine the distribution of this variable.
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(mobiles_num, aes(x = clock_speed)) + geom_histogram() + theme_minimal()
+```
+From the plot, it is clear that this variable cannot be split into 5 intervals of (roughly) equal number of observations.
+It seems reasonable to try 3 bins.
+
+```{r}
+mobiles_num_disc = discretize(data = mobiles_num,
+                         method = "quantile",
+                         breaks = c(5,3,5,5,5,5,5,5,5))
+```
+
+Let's see what the transformed variables look like, through summary statistics
+```{r}
+summary(mobiles_num_disc)
+```
+
+Merge the discretized variables with the rest of the columns (variables) from the *mobiles_ds* data frame.
+```{r}
+# identify the columns to add as the difference between the vectors with variable names
+cols_to_add <- setdiff(names(mobiles_ds), names(mobiles_num_disc))
+
+cbind(mobiles_ds[,cols_to_add], mobiles_num_disc) -> mobiles_final
+```
+
+```{r}
+str(mobiles_final)
+```
+
+To make things easier later, we'll change the order of variables in the data frame, so that the outcome variable is the last one.
+
+```{r}
+mobiles_final = mobiles_final[,c(1:3,5:13,4)]
+```
+
+The data set is now ready and we can proceed to splitting the data into training and test sets and building models.
+
+**IMPORTANT NOTE**: for now, we are considering all variables as potentially relevant for building a prediction model. In a week or two, we will learn how to select variables that are truly relevant candidates for model building.
+
+### Train-test split
+
+We will split the data into training and test sets in the same way we did before. 
+```{r message=FALSE}
+library(caret)
+```
+
+```{r}
+set.seed(2024)
+training_indices = createDataPartition(mobiles_final$top_price, p = 0.8, list = FALSE)
+train_ds = mobiles_final[training_indices, ]
+test_ds = mobiles_final[-training_indices, ]
+```
+
+
+### Create a prediction model using the Naive Bayes algorithm
+
+We will start by loading the **e1071** package that offers a handy function (**naiveBayes**) for building a classification model using the NB algorithm.
+
+For explanation of the NB algorithm, see the lecture slides.
+
+```{r message=FALSE}
+library(e1071)
+
+?naiveBayes
+```
+
+```{r}
+nb1 <- naiveBayes(top_price ~ ., data = train_ds)
+```
+
+Print the model to see the conditional probabilities that the `naiveBayes` function computed for each variable.
+```{r}
+print(nb1)
+```
+For each input variable, we have conditional probabilities for each possible value of the variable given a particular value of the outcome variables. For example, in case of the `n_cores`  variable, if a mobile has top price (top_price="Yes"), the probability that the mobile has 7 or 8 cores is 0.12. Or in case of the `color` variable, if a phone is not in the top price category (top_price="No"), the probability that the phone is white is 0.26. 
+
+We will proceed to evaluate the model on the test set, as was done before (for classification trees).
+
+First, make the predictions on the test data set
+```{r}
+nb1_pred <- predict(nb1, newdata = test_ds, type = 'class')
+
+head(nb1_pred)
+```
+
+Then, create the confusion matrix:
+```{r}
+nb1_cm <- table(true = test_ds$top_price, predicted = nb1_pred)
+nb1_cm
+```
+
+Load the function for computing the evaluation measures from the util.R script
+```{r}
+source("util.R")
+```
+
+```{r}
+compute_eval_measures_v1(nb1_cm)
+```
+
+### Finding optimal probability threshold using ROC curves
+
+When doing predictions using the initial model (nb1), we relied on the default classification threshold of 0.5. That is, the `predict` function used that threshold to associate class labels ("Yes", "No") with each observation based on its posterior probability estimated by the NB model (recall the Bayesian formula that NB uses). However, we do not need to use the value of 0.5, but can use any other probability value as the threshold. To find the optimal one, we use the ROC curve (see the lecture slides for further information about the ROC curve).  
+
+ROC curve enables us to choose the probability threshold that will result in the desired *specificity* vs *sensitivity* trade-off.
+
+**Sensitivity** (*True Positive Rate - TPR*) measures the proportion of positives that are correctly predicted as such; it is the same as *Recall*
+
+**Specificity** (*True Negative Rate - TNR)*) measures the proportion of negatives that are correctly predicted as such.
+
+By selecting the probability threshold, we make a decision if we want to favour the prediction of positive class (Sensitivity), the prediction of negative class (Specificity), or we want a model that seeks to maximize both measures.  
+
+To make use of a ROC curve to find the optimal probability threshold, we need to:
+
+* For each observation, compute the probability of having each class value ('Yes' / 'No')
+* Use the computed probabilities to create a ROC curve
+* Use the ROC curve to choose the classification (probability) threshold
+
+First, for the observations in the test set, compute probabilities for each class value 
+```{r}
+nb1_pred_prob <- predict(nb1, newdata = test_ds, type = "raw")
+head(nb1_pred_prob)
+```
+
+Second, create a ROC curve, using the `roc` function from the [**pROC** package](https://web.expasy.org/pROC/) 
+```{r message=FALSE}
+library(pROC)
+
+?roc
+```
+
+```{r}
+nb1_roc <- roc(response = as.numeric(test_ds$top_price), 
+               predictor = nb1_pred_prob[,2],
+               levels = c(1, 2))
+```
+Note: the `roc` function uses somewhat peculiar terminology (originating from experimental research): *controls* stands for observations of the negative class, while *cases* stands for observations of the positive class
+
+Plot the ROC curve
+```{r}
+plot.roc(nb1_roc)
+```
+
+Local maximas of the ROC curve serve as candidates for the classification threshold. To identify those candidates and how the selection of each one would affect the performance of the classifier, we will use the `coords` function. In particular, for each local maximum (= threshold candidate), the function computes a set of evaluation measures (defined by the `ret` parameter) that characterise the classification performance that would result from choosing that local maximum as the classification threshold:
+```{r}
+nb1_coords <- coords(nb1_roc, 
+                     ret = c("accuracy", "spec", "sens", "precision", "thr"),
+                     x = "local maximas",
+                     transpose = FALSE)
+nb1_coords
+```
+We choose the threshold based on what we want to achieve - maximum sensitivity (recall) or maximum precision or balanced specificity and sensitivity or ... The choice depends on the requirements of each classification task.
+
+In the context of the current task - distinguishing between top priced phones and those that are not, we would be probably interested in having both high specificity and sensitivity (= high prediction rate of both positive and negative classes), while also not harming precision too much (= not making many false positives), we can choose the threshold given in the 9th or 10th row in the `nb1_coords` data frame:
+```{r}
+opt_threshold = nb1_coords$threshold[9]
+```
+
+Note: if we wanted to choose the threshold that would maximize the sum of sensitivity and specificity measures - one of the often used criteria for the threshold selection - in the `coords` f. we should set the value of the `x` parameter to "best" and the value of the `best.method` parameter to "youden" (see below)
+```{r}
+# coords(nb1_roc, 
+#        ret = c("accuracy", "spec", "sens", "precision", "thr"),
+#        x = "best", 
+#        best.method = "youden") -> nb1_youden
+```
+
+
+Now, we use the chosen threshold to make predictions: for each observation, if the probability of belonging to the positive class is equal to or above the chosen classification threshold, the label of the positive class is assigned to the observation
+```{r}
+ifelse(nb1_pred_prob[,2] >= opt_threshold, "Yes", "No") |> as.factor() -> nb1_opt_pred
+```
+
+```{r}
+head(nb1_opt_pred)
+```
+
+Now that we have each observation associated with a class label, we can create the confusion matrix and compute evaluation measures:
+```{r}
+nb1_opt_cm <- table(true = test_ds$top_price, predicted = nb1_opt_pred)
+compute_eval_measures_v1(nb1_opt_cm)
+```
+Note that the results are as expected, that is, as given in the 9th row of the above given (`nb1_coords`) data frame.    
+
+Compare the performance with the default and the new threshold:
+```{r}
+rbind(compute_eval_measures_v1(nb1_cm),
+      compute_eval_measures_v1(nb1_opt_cm)) |> 
+  round(digits = 4) |>
+  as.data.frame()
+```
+Compared to the initial predictions, we have significant increase in recall and at the same time significant drop in precision. In other words, we are making more mistakes of the false positive type - that is, classifying phones as top priced even when they are not such - while at the same time making less mistakes of the false negative type - that is, missing to identify phones that are top priced. Accuracy has dropped somewhat, but that performance measure is not of much importance in unbalanced data sets (= data sets where one class is far more represented that the other) such as the one we have here.      
+
+Final note:
+The use of ROC curve to select the optimal classification threshold can be applied to any classifier that computes probabilities of class membership (= probabilities of belonging to each of the classes), it is not restricted to NB. 
+
+
+

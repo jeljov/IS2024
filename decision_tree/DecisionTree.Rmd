@@ -1,0 +1,317 @@
+---
+title: 'Classification task: Decision Tree'
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+The prediction task: to predict which movies will be highly rated by users (movie watchers). 
+The rationale: identify movies that can be recommended by a movie streaming service when no data about the user is available (the so-called "cold start" problem) 
+
+```{r message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+
+### Load and inspect the data
+
+The data originates from the [Movie Industry dataset](https://www.kaggle.com/datasets/danielgrijalvas/movies), where further information about it can be found (including the description of all the variables). 
+Note: the original data set has been adapted for this class.  
+
+Load the data
+```{r}
+movies <- read.csv("data/movies.csv")
+```
+
+Inspect the data
+```{r}
+glimpse(movies)
+```
+
+Create the outcome variable - `high_score` - based on the `score` variable. We will consider a movie to have high score if its score is above the 3rd quartile (75th percentile)
+```{r}
+q3_score = quantile(movies$score, probs = 0.75)
+q3_score
+```
+
+```{r}
+movies$high_score = ifelse(test=movies$score > q3_score, 
+                           yes="Yes",
+                           no="No")
+movies$high_score[1:10]
+```
+
+Transform the outcome variable into factor, as required for the classification task
+```{r}
+movies$high_score = as.factor(movies$high_score)
+movies$high_score[1:10]
+```
+
+Remove from the data set the variable used for creating the outcome variable. This is not strictly required, but it is better to do so, to avoid potential, unintentional use of that variable for building a prediction model.
+The reason we do not want to use it for model building is that it completely determines the outcome variable and its use would be a kind of "cheating".
+```{r}
+movies$score = NULL
+```
+
+
+### Data preparation
+
+Character variables cannot be directly used for building predictive models. If considered potentially relevant for the prediction task, they need to be transformed into factors and used as such for model building.  
+
+In our case, the `name` variable is irrelevant for the prediction and thus will be removed, while the other character variables will be examined in terms of the number of distinct values, to determine if it would make sense to transform them into factors and include in the model.
+
+First, exclude the `name` variable
+```{r}
+movies$name = NULL
+```
+
+Examine the variables that are candidates for transformation into factors
+```{r}
+char_vars = c("rating", "genre", "director", "writer", "star", "country", "company")
+
+apply(movies[, char_vars], 2, function(x) length(unique(x)))
+```
+Variables `rating`, `genre`, and `country` have a small number of distinct values and thus can be transformed into factors and used for model building:
+```{r}
+movies$rating = as.factor(movies$rating)
+movies$genre = as.factor(movies$genre)
+movies$country = as.factor(movies$country)
+```
+
+The remaining character variables will be removed
+```{r}
+vars_to_remove = c(5, 6, 7, 11)
+movies = movies[, -vars_to_remove]
+```
+
+We can now proceed to splitting the data into training and test sets and building models.
+
+**IMPORTANT NOTE**: for now, we are considering all variables as potentially relevant for building a prediction model. In a few weeks, we will learn how to select variables that are truly relevant candidates for model building.
+
+### Train-test split
+
+We will split the data into training and test sets in the same way we did before (see the materials on linear regression). 
+Remember that we build our models using training data only, while test data is used for model evaluation only.
+
+```{r message=FALSE}
+library(caret)
+```
+
+```{r}
+set.seed(2024)
+training_indices = createDataPartition(movies$high_score, p = 0.8, list = FALSE)
+train_ds = movies[training_indices, ]
+test_ds = movies[-training_indices, ]
+```
+
+Check the distribution of the `high_rating` variable on the train and test sets
+```{r}
+summary(train_ds$high_score) |> prop.table() |> round(digits = 2)
+```
+
+```{r}
+summary(test_ds$high_score) |> prop.table() |> round(digits = 2)
+```
+
+### Building decision trees using the rpart algorithm
+
+We will start by loading libraries for building a decision tree using the *rpart* (recursive partitioning) algorithm and visualising the resulting models (trees). 
+
+For explanation of the *rpart* algorithm, see the lecture slides. 
+
+```{r}
+library(rpart)
+library(rpart.plot)
+```
+
+#### Initial (default) decision tree model
+
+We will first build a model with the default hyper-parameter values. 
+```{r}
+dt1 = rpart(high_score ~ ., 
+            data = train_ds, 
+            method = "class")
+```
+
+Plot the model
+```{r}
+rpart.plot(dt1)
+```
+Make predictions on the test data set
+```{r}
+dt1_pred = predict(dt1, newdata = test_ds, type = "class")
+dt1_pred[1:10]
+```
+
+We will now create the confusion matrix and compute the evaluation measures.
+
+**Note**: See lecture slides for an explanation of both the confusion matrix and evaluation measures.
+```{r}
+dt1_cm = table(true=test_ds$high_score,
+               predicted = dt1_pred)
+dt1_cm
+```
+Interpretation of the confusion matrix:
+
+* TP = 138 - there are 138 movies that we predicted as having high score and they really did receive high scores from the audience
+* TN = 730 - there are 730 movies for which we correctly predicted that they will not receive high score
+* FP = 60 - for 60 movies, we wrongly predicted that they will receive high score by the public
+* FN = 119 - we missed to identify 119 movies as having high score; that is, for 119 movies we incorrectly predicted that they will not receive high score
+
+Now, we will use the confusion matrix to compute a set of standard evaluation measures
+```{r}
+dt1_accuracy = sum(diag(dt1_cm))/sum(dt1_cm)
+dt1_accuracy
+```
+Interpretation: Out of all the movies in the test data set, we have correctly predicted if a movie will have high score or not for 82.9% of the movies
+
+```{r}
+dt1_precision = dt1_cm[2,2]/sum(dt1_cm[,2])
+dt1_precision
+```
+Interpretation: Out of all the movies that were predicted to have high score, 70% of movies really have high score 
+
+
+```{r}
+dt1_recall = dt1_cm[2,2]/sum(dt1_cm[2,])
+dt1_recall
+```
+Interpretation: Out of all the movies that received high score, 54% were predicted to have high score. 
+
+
+```{r}
+dt1_F1 = 2*dt1_precision*dt1_recall/(dt1_precision + dt1_recall)
+dt1_F1
+```
+Interpretation: When precision and recall are balanced, the overall model performance is 61%, indicating that we are not doing that good job of classifying movies into those that will score high and those that will not.  
+
+
+Let's now put the computation of all the measures in a function, so that we can easily compute and then compare evaluation measures for different models
+```{r}
+compute_eval_measures <- function(cm) {
+  acc = sum(diag(cm))/sum(cm)
+  p = cm[2,2]/sum(cm[,2])
+  r = cm[2,2]/sum(cm[2,])
+  f1 = 2*p*r/(p+r)
+  c(accuracy = acc, 
+    precision = p,
+    recall = r,
+    F1 = f1)
+}
+```
+
+#### Finding optimal parameter values through cross-validation
+
+**Note**: See lecture slides for an explanation of cross-validation
+```{r}
+train_setup = trainControl(method = "cv", number = 10)
+cp_grid = expand.grid(.cp = seq(from=0.005, to=0.05, by=0.0025))
+
+set.seed(2024)
+dt_cv = train(x = train_ds[,-9],
+              y = train_ds$high_score,
+              method = "rpart",
+              tuneGrid = cp_grid,
+              trControl = train_setup)
+```
+
+```{r}
+plot(dt_cv)
+```
+```{r}
+dt_cv
+```
+Create a new DT using the optimal `cp` value
+```{r}
+optimal_cp = dt_cv$bestTune$cp
+
+dt2 = rpart(high_score ~ ., 
+            data = train_ds, 
+            method = "class",
+            control = rpart.control(cp=optimal_cp))
+```
+
+```{r}
+rpart.plot(dt2)
+```
+```{r}
+dt2_pred = predict(dt2, newdata = test_ds, type = "class")
+
+dt2_cm = table(true = test_ds$high_score,
+               predicted = dt2_pred)
+```
+
+```{r}
+dt2_cm
+```
+
+```{r}
+compute_eval_measures(dt2_cm)
+```
+
+Compare the results
+```{r}
+rbind(compute_eval_measures(dt1_cm),
+      compute_eval_measures(dt2_cm)) |> 
+  round(digits = 4) |>
+  as.data.frame()
+```
+We got somewhat better model, but that model is also more complex that the first one (compare the plotted models). 
+Complex models are prone to *over-fitting* - see the lecture slides for explanation - and thus we will try to find an alternative that will be simpler and having similar performance.
+
+To that end, let's go back to the cross-validation results and look for `cp` value that will be higher than the optimal one (thus the model will be simpler) and will not be much worse in terms of performance. The value of 0.0125 satisfies these criteria. We will use it to build the 3rd tree
+```{r}
+alt_cp = 0.0125
+
+dt3 = rpart(high_score ~ ., 
+            data = train_ds, 
+            method = "class",
+            control = rpart.control(cp=alt_cp))
+
+rpart.plot(dt3)
+```
+This brings us back to the initial tree, the one built w/ default `cp` value. Let's check the performance
+
+```{r}
+dt3_pred = predict(dt3, newdata = test_ds, type = "class")
+
+dt3_cm = table(true = test_ds$high_score,
+               predicted = dt3_pred)
+
+rbind(compute_eval_measures(dt1_cm),
+      compute_eval_measures(dt2_cm),
+      compute_eval_measures(dt3_cm)) |> 
+  round(digits = 4) |>
+  as.data.frame()
+
+```
+As expected, the performance of the 3rd model is the same as that of the initial one. 
+
+To sum up, through cross-validation, we have identified the value of the `cp` hyper-parameter that results in a model with the best performance measures. However, it also results in a more complex model that might be prone to over-fitting. In such situations, we should consider if the improvement in the performance is such that it merit having a complex model. If the improvement in performance is not significant, we should keep the simpler model and (somewhat) less performant model. This is know in machine learning as the [Occam razor principle](https://www.aiforanyone.org/glossary/occams-razor). 
+
+
+#### Examine the estimated importance of variables
+
+A variable importance is the sum of the improvement in the overall *Gini* measure produced by the nodes in which it appears. To put it simply, the importance of a variable reflects how much the variable contributes to the overall quality of classification.  
+
+Reminder: *Gini* is one of the measures used for estimating the quality of classification. In particular, it measures the "impurity" (or heterogeneity) of a node and is used to determine how (on what variable and what variable value) to make a split when building a tree. For more details see the lecture slides on Decision trees.
+
+```{r}
+dt_var_imp = varImp(dt3) 
+dt_var_imp
+```
+Plot them for a better overview
+```{r}
+dt_var_imp$Variable = row.names(dt_var_imp)
+row.names(dt_var_imp) = 1:nrow(dt_var_imp)
+
+ggplot(dt_var_imp,
+       aes(x = reorder(Variable, Overall), y = Overall)) +
+  geom_col(width=0.5, fill="skyblue") +
+  labs(x = "", y = "\nImportance", title = "Estimated variable importance") +
+  coord_flip() +
+  theme_minimal()
+```
+
+

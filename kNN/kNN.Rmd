@@ -1,0 +1,245 @@
+---
+title: 'Classification task: k Nearest Neighbours (kNN)'
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+The prediction task: to predict which mobile phones can be solved for a high price. 
+
+The rationale: help a company determine its price policy; more precisely, help it identify which phones it can offer to its customers on a high price.  
+
+The algorithm to be used: K Nearest Neighbours (kNN)
+
+### Load and inspect the data
+
+The data originates from the [Mobile Price Classification dataset](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification), where further information about it can be found (including the description of all the variables). 
+
+Notes about the data set: 
+
+* The original data set has been adapted for this class. 
+* The data set used in Naive Bayes class originates from the same data set, but was adapted in a different way than the one used in this class; hence, the data sets used in this and the Naive Bayes class are not identical. 
+ 
+
+Load the data
+```{r}
+mobiles_data <- read.csv("data/mobiles.csv")
+```
+
+Inspect the data
+```{r}
+str(mobiles_data)
+```
+
+```{r}
+summary(mobiles_data)
+```
+
+We will use the `price_range` variable to create the outcome variable:
+```{r}
+table(mobiles_data$price_range)
+```
+
+Create the outcome variable - `top_price` - by considering that `price_range` value of 3 denotes top price: 
+```{r}
+mobiles_data$top_price = ifelse(test=mobiles_data$price_range == 3, 
+                                yes="Yes", no="No")
+mobiles_data$top_price[1:10]
+```
+
+Transform the outcome variable into factor, as required for the classification task
+```{r}
+mobiles_data$top_price = as.factor(mobiles_data$top_price)
+mobiles_data$top_price[1:10]
+```
+
+Remove from the data set the variable used for creating the outcome variable. 
+```{r}
+mobiles_data$price_range = NULL
+```
+
+
+### Data preparation
+
+kNN algorithm typically works with numerical data. 
+*Note*: kNN can be used with categorical data, as well, but in that case it requires a distance measure that is appropriate for categorical data, such as [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance). Such a use of the kNN algorithm is out of the scope of this course.   
+
+In the current data set, all input variables except one (dual_sim) are numerical variables (either int or real value numbers). As such, they can be used for model building.
+
+If we had an ordinal variables encoded as a factor - for example, satisfaction of the customers w/ the phone, expressed on the 5-point scale from `Not All` to `Fully Satisfied` - we could transform it into an int variable and use for model building.
+
+On the other hand, if we had a true categorical variable encoded as a factor - for example, the color of the phone - we would not use it. As noted above, it is generally possible, but is more complicated and we will not consider such cases.
+
+For computing similarity among instances, we will use the Euclidean distance (the most commonly used distance measure). Since this distance measure is very sensitive to the value range of variables (variables with larger value range tend to dominate over those with smaller range), we should check the range of the input variables and if their value ranges differ significantly do the scaling of variables.
+
+#### Scaling of input variables
+
+The purpose of scaling is to change the value range of variables, so that all variables have the same or at least similar range. Two frequently used approaches for scaling variables are:
+
+* *Normalisation*: it reduces variables to the same value range (typically 0-1). Its advantage: all variables have the same value range; its disadvantage: should not be applied in the presence of outliers  
+* *Standardisation*: it reduces the difference in value ranges by:
+** subtracting the average (mean / median) from the value of the variable, so that the average value is 0, and 
+** dividing the result with the measure of variability (st. deviation / interquartile range), so that variability is 1
+
+To decide if we should use mean and st. deviation or median and interquartile range for standardization, we need to check if the variable is normally distributed or not. If it is normally distributed, we use mean and st. deviation; otherwise, we use median and interquartile range  
+
+When possible, the use of normalisation is preferred. However, if outliers are present, standardisation should be used instead. In the latter case, the transformed variables will not have the same value range, but the difference will be reduced. 
+
+So, let's check if the input variables have outliers 
+```{r}
+apply(mobiles_data[,-14], 2, function(x) length(boxplot.stats(x)$out))
+```
+None of the input variables have outliers => we can apply normalisation
+
+Normalisation is typically done using the following formula: (x - min(x))/(max(x) - min(x))
+```{r}
+normalise_var <- function(var) {
+  (var - min(var, na.rm = T))/(max(var, na.rm = T) - min(var, na.rm = T))
+}
+```
+
+Apply it to all input variables
+```{r}
+apply(mobiles_data[,-14], 2, normalise_var) |> as.data.frame() -> mobiles_norm
+```
+
+Check that the value ranges are really the same
+```{r}
+apply(mobiles_norm, 2, range) |> as.data.frame()
+```
+
+Add the output variable to the transformed input variables
+```{r}
+mobiles_norm$top_price = mobiles_data$top_price
+```
+
+We can now proceed to splitting the data into training and test sets and building models.
+
+**IMPORTANT NOTE**: for now, we are considering all variables as potentially relevant for building a prediction model. In a week or two, we will learn how to select variables that are truly relevant candidates for model building.
+
+### Train-test split
+
+We will split the data into training and test sets in the same way we did before. 
+```{r message=FALSE}
+library(caret)
+```
+
+```{r}
+set.seed(2024)
+training_indices = createDataPartition(mobiles_norm$top_price, p = 0.8, list = FALSE)
+train_ds = mobiles_norm[training_indices, ]
+test_ds = mobiles_norm[-training_indices, ]
+```
+
+Check the distribution of the `top_price` variable on the train and test sets
+```{r}
+summary(train_ds$top_price) |> prop.table() |> round(digits = 2)
+```
+
+```{r}
+summary(test_ds$top_price) |> prop.table() |> round(digits = 2)
+```
+
+### Make predictions using the kNN algorithm
+
+We will start by loading the *class* library that offers a function (knn) for doing the classification task using the kNN algorithm. Note: the `knn` function can be used for the regression task, as well.
+
+```{r}
+library(class)
+```
+
+#### Initial knn classification
+
+We will first do the classification with a randomly chosen value for k. 
+```{r}
+set.seed(2024)
+rand_k = sample(seq(1,15,2), 1) ## reminder: we consider only odd values for k, to avoid ties
+
+knn1_pred = knn(train = train_ds[,-14],
+                test = test_ds[,-14],
+                cl = train_ds$top_price,
+                k = rand_k)
+```
+Reminder: the kNN algorithm does not build a model, but directly makes prediction on the test data based on the training data. Hence, the result of the knn function are predicted values of the outcome variable on the test set.
+
+We will now create the confusion matrix and compute the evaluation measures.
+```{r}
+cm1 = table(true = test_ds$top_price, predicted=knn1_pred)
+cm1
+```
+
+Get the function for computing the evaluation measures from the util.R script
+```{r}
+source("util.R")
+```
+
+```{r}
+compute_eval_measures_v1(cm1)
+```
+
+There are sequentially two things that primarily affect the results of knn-based classification:
+
+* the value of k, that is, the number of nearest neighbours to consider
+* the distance measure used when identifying neighbours
+
+The knn function uses the Euclidean metric as the distance measure and does not allow for an alternative metric. So, we will seek to improve the results by finding the optimal value for `k`.
+
+#### Finding optimal k value through cross-validation
+
+```{r}
+train_setup = trainControl(method = "cv", number = 10)
+k_grid = expand.grid(.k = seq(from=3, to=21, by=2))
+
+set.seed(2024)
+knn_cv = train(x = train_ds[,-14],
+               y = train_ds$top_price,
+               method = "knn",
+               tuneGrid = k_grid,
+               trControl = train_setup)
+```
+
+```{r}
+plot(knn_cv)
+```
+
+```{r}
+knn_cv
+```
+
+Create new predictions using the optimal `k` value
+```{r}
+optimal_k = knn_cv$bestTune$k
+
+knn2_pred = knn(train = train_ds[,-14],
+                test = test_ds[,-14],
+                cl = train_ds$top_price,
+                k = optimal_k)
+```
+
+Note: another option to consider is using k=15 since the performance is very similar, while the variance is smaller (at the expense of bias that starts increasing - remember the bias/variance trade-off) 
+
+```{r}
+cm2 = table(true = test_ds$top_price, predicted = knn2_pred)
+cm2
+```
+
+```{r}
+compute_eval_measures_v1(cm2)
+```
+
+Compare the results
+```{r}
+rbind(compute_eval_measures_v1(cm1),
+      compute_eval_measures_v1(cm2)) |> 
+  round(digits = 4) |>
+  as.data.frame()
+```
+The two models are very similar in terms of performance - the first has better recall, at the expense of weaker precision compared to the 2nd model
+
+Final notes:
+
+* How improper selection of K may lead to under-fitting or over-fitting: in general, very low `k` values tend to lead to high variance and over-fitting, whereas very high `k` values tend to lead to high bias and under-fitting. A nice explanation is given in [this video](https://www.youtube.com/watch?v=X_3Ke5zVqo4).  
+
+* How to choose distance measure: while we will use Euclidean measure in this course, you may want to learn a bit about alternative measures and how to make the choice which one to use; in that case, [this short video](https://www.youtube.com/watch?v=_EEcjn0Uirw) might be useful. 
+
+

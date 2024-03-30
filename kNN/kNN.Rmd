@@ -85,7 +85,11 @@ To decide if we should use mean and st. deviation or median and interquartile ra
 
 When possible, the use of normalisation is preferred. However, if outliers are present, standardisation should be used instead. In the latter case, the transformed variables will not have the same value range, but the difference will be reduced. 
 
-So, let's check if the input variables have outliers 
+So, let's check if the input variables have outliers. This is often done using the [boxplot](https://builtin.com/data-science/boxplot). For example, we can check the presence of outliers in the `battery_power` attribute:
+```{r}
+boxplot(mobiles_data$battery_power)
+```
+We can also use R's method that compute the statistics for a boxplot - `boxplot.stats` - to directly get outliers, if any:
 ```{r}
 apply(mobiles_data[,-14], 2, function(x) length(boxplot.stats(x)$out))
 ```
@@ -119,14 +123,14 @@ We can now proceed to splitting the data into training and test sets and buildin
 
 ### Train-test split
 
-We will split the data into training and test sets in the same way we did before. 
+We will split the data into training and test sets in the same way we did before, using 80% of the data for the training set. 
 ```{r message=FALSE}
 library(caret)
 ```
 
 ```{r}
 set.seed(2024)
-training_indices = createDataPartition(mobiles_norm$top_price, p = 0.8, list = FALSE)
+training_indices = createDataPartition(mobiles_norm$top_price, p = 0.75, list = FALSE)
 train_ds = mobiles_norm[training_indices, ]
 test_ds = mobiles_norm[-training_indices, ]
 ```
@@ -153,7 +157,7 @@ library(class)
 We will first do the classification with a randomly chosen value for k. 
 ```{r}
 set.seed(2024)
-rand_k = sample(seq(1,15,2), 1) ## reminder: we consider only odd values for k, to avoid ties
+rand_k = sample(seq(3,15,2), 1) ## reminder: we consider only odd values for k, to avoid ties
 
 knn1_pred = knn(train = train_ds[,-14],
                 test = test_ds[,-14],

@@ -91,6 +91,10 @@ boxplot(mobiles_data$battery_power)
 ```
 We can also use R's method that compute the statistics for a boxplot - `boxplot.stats` - to directly get outliers, if any:
 ```{r}
+boxplot.stats(mobiles_data$battery_power)
+```
+Apply this check, now, to all the attributes
+```{r}
 apply(mobiles_data[,-14], 2, function(x) length(boxplot.stats(x)$out))
 ```
 None of the input variables have outliers => we can apply normalisation
@@ -157,7 +161,7 @@ library(class)
 We will first do the classification with a randomly chosen value for k. 
 ```{r}
 set.seed(2024)
-rand_k = sample(seq(3,15,2), 1) ## reminder: we consider only odd values for k, to avoid ties
+rand_k = sample(seq(3,21,2), 1) ## reminder: we consider only odd values for k, to avoid ties
 
 knn1_pred = knn(train = train_ds[,-14],
                 test = test_ds[,-14],

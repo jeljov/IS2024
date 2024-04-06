@@ -1,0 +1,243 @@
+"beverage_type","beverage_prep","cholesterol","sodium","total_carbs","sugar","protein","total_fat","vitamine_A","calcium","iron"
+"Coffee","Short",0,5,0,0,0.3,0.1,0,0,0
+"Coffee","Tall",0,10,0,0,0.5,0.1,0,0,0
+"Coffee","Grande",0,10,0,0,1,0.1,0,0,0
+"Coffee","Venti",0,10,0,0,1,0.1,0,2,0
+"Classic Espresso Drinks","Short Nonfat Milk",5,75,10,9,6,0.1,10,20,0
+"Classic Espresso Drinks","2% Milk",15,85,10,9,6,3.5,10,20,0
+"Classic Espresso Drinks","Soymilk",0,65,6,4,5,2.5,6,20,8
+"Classic Espresso Drinks","Tall Nonfat Milk",5,120,15,14,10,0.2,15,30,0
+"Classic Espresso Drinks","2% Milk",25,135,15,14,10,6,15,30,0
+"Classic Espresso Drinks","Soymilk",0,105,10,6,8,4.5,10,30,15
+"Classic Espresso Drinks","Grande Nonfat Milk",5,150,19,18,13,0.3,20,40,0
+"Classic Espresso Drinks","2% Milk",30,170,19,17,12,7,20,40,0
+"Classic Espresso Drinks","Soymilk",0,130,13,8,10,5,15,40,15
+"Classic Espresso Drinks","Venti Nonfat Milk",10,190,25,23,16,0.4,30,50,0
+"Classic Espresso Drinks","2% Milk",35,220,24,22,16,9,25,50,0
+"Classic Espresso Drinks","Soymilk",0,170,16,11,13,7,20,50,25
+"Classic Espresso Drinks","Short Nonfat Milk",5,60,21,17,7,1.5,8,15,10
+"Classic Espresso Drinks","2% Milk",10,70,21,17,6,4,8,15,10
+"Classic Espresso Drinks","Soymilk",0,55,19,13,6,3.5,6,15,20
+"Classic Espresso Drinks","Tall Nonfat Milk",5,100,32,27,10,2,15,25,20
+"Classic Espresso Drinks","2% Milk",20,115,32,26,10,6,15,25,20
+"Classic Espresso Drinks","Soymilk",0,85,28,20,9,5,10,25,30
+"Classic Espresso Drinks","Grande Nonfat Milk",5,125,43,34,13,2.5,20,35,25
+"Classic Espresso Drinks","2% Milk",25,140,42,34,13,8,15,35,25
+"Classic Espresso Drinks","Soymilk",0,105,37,26,11,7,10,35,40
+"Classic Espresso Drinks","Venti Nonfat Milk",10,160,54,44,17,3,25,45,30
+"Classic Espresso Drinks","2% Milk",30,180,53,43,17,11,20,45,30
+"Classic Espresso Drinks","Soymilk",0,140,47,33,14,9,15,45,50
+"Classic Espresso Drinks","Short Nonfat Milk",5,70,19,18,6,0.1,10,20,0
+"Classic Espresso Drinks","2% Milk",15,80,18,17,6,3.5,10,20,0
+"Classic Espresso Drinks","Soymilk",0,60,16,13,5,2.5,6,20,8
+"Classic Espresso Drinks","Tall Nonfat Milk",5,110,28,27,9,0.2,15,30,0
+"Classic Espresso Drinks","2% Milk",20,125,28,27,9,5,15,30,0
+"Classic Espresso Drinks","Soymilk",0,95,23,20,7,4,10,30,15
+"Classic Espresso Drinks","Grande Nonfat Milk",5,140,37,35,12,0.3,20,35,0
+"Classic Espresso Drinks","2% Milk",25,150,37,35,12,6,20,35,0
+"Classic Espresso Drinks","Soymilk",0,120,31,26,9,5,10,35,15
+"Classic Espresso Drinks","Venti Nonfat Milk",10,180,47,45,15,0.3,25,50,0
+"Classic Espresso Drinks","2% Milk",35,200,46,44,15,9,25,45,0
+"Classic Espresso Drinks","Soymilk",0,160,39,33,12,7,15,45,20
+"Classic Espresso Drinks","Short",0,5,1,0,0.4,0,0,0,0
+"Classic Espresso Drinks","Tall",0,10,2,0,1,0,0,2,0
+"Classic Espresso Drinks","Grande",0,15,3,0,1,0,0,2,0
+"Classic Espresso Drinks","Venti",0,15,4,0,1,0,0,2,0
+"Classic Espresso Drinks","Short Nonfat Milk",5,60,8,7,5,0.1,8,15,0
+"Classic Espresso Drinks","2% Milk",10,70,8,7,5,3,8,15,0
+"Classic Espresso Drinks","Soymilk",0,40,4,3,3,1.5,4,10,6
+"Classic Espresso Drinks","Tall Nonfat Milk",5,70,9,8,6,0.1,10,20,0
+"Classic Espresso Drinks","2% Milk",15,80,9,8,6,3.5,10,20,0
+"Classic Espresso Drinks","Soymilk",0,65,7,4,5,3,6,20,8
+"Classic Espresso Drinks","Grande Nonfat Milk",5,90,12,10,8,0.2,15,25,0
+"Classic Espresso Drinks","2% Milk",15,100,12,10,8,4,10,25,0
+"Classic Espresso Drinks","Soymilk",0,80,9,5,7,3.5,8,25,10
+"Classic Espresso Drinks","Venti Nonfat Milk",5,120,16,14,10,0.2,20,30,0
+"Classic Espresso Drinks","2% Milk",25,135,16,14,10,6,15,30,0
+"Classic Espresso Drinks","Soymilk",0,110,11,7,9,4.5,10,35,15
+"Classic Espresso Drinks","Solo",0,0,1,0,0.4,0,0,0,0
+"Classic Espresso Drinks","Doppio",0,1,2,0,1,0,0,0,0
+"Classic Espresso Drinks","Short Nonfat Milk",5,80,9,8,6,0.1,10,20,0
+"Classic Espresso Drinks","Tall Nonfat Milk",5,125,14,13,9,0.2,15,30,0
+"Classic Espresso Drinks","Grande Nonfat Milk",5,160,18,16,12,0.3,20,35,0
+"Classic Espresso Drinks","Venti Nonfat Milk",10,200,24,21,15,0.3,25,50,0
+"Signature Espresso Drinks","Short Nonfat Milk",5,70,17,15,6,1,10,15,0
+"Signature Espresso Drinks","2% Milk",15,80,16,15,5,4,10,15,0
+"Signature Espresso Drinks","Soymilk",0,60,14,11,4,3,6,15,8
+"Signature Espresso Drinks","Tall Nonfat Milk",5,105,25,24,8,1,15,25,0
+"Signature Espresso Drinks","2% Milk",20,115,25,23,8,5,15,25,0
+"Signature Espresso Drinks","Soymilk",0,90,21,17,7,4.5,10,25,10
+"Signature Espresso Drinks","Grande Nonfat Milk",10,130,35,32,11,1,20,35,0
+"Signature Espresso Drinks","2% Milk",25,150,34,32,10,7,15,30,0
+"Signature Espresso Drinks","Soymilk",5,115,29,24,9,5,10,35,15
+"Signature Espresso Drinks","Venti Nonfat Milk",10,170,43,41,13,1,25,40,0
+"Signature Espresso Drinks","2% Milk",35,180,43,40,13,8,20,40,0
+"Signature Espresso Drinks","Soymilk",5,140,36,31,11,7,15,40,20
+"Signature Espresso Drinks","Short Nonfat Milk",5,120,31,29,7,3,10,25,0
+"Signature Espresso Drinks","2% Milk",15,125,31,29,7,6,8,25,0
+"Signature Espresso Drinks","Soymilk",0,110,28,25,6,5,6,25,8
+"Signature Espresso Drinks","Tall Nonfat Milk",5,190,47,45,12,4.5,15,35,0
+"Signature Espresso Drinks","2% Milk",20,200,46,44,11,9,15,35,0
+"Signature Espresso Drinks","Soymilk",0,170,42,39,10,8,10,35,10
+"Signature Espresso Drinks","Grande Nonfat Milk",10,240,61,58,15,6,20,45,2
+"Signature Espresso Drinks","2% Milk",25,250,61,58,15,11,15,45,0
+"Signature Espresso Drinks","Soymilk",0,220,56,51,13,10,10,45,15
+"Signature Espresso Drinks","Venti Nonfat Milk",10,310,78,74,19,7,25,60,2
+"Signature Espresso Drinks","2% Milk",35,330,77,74,19,15,20,60,2
+"Signature Espresso Drinks","Soymilk",5,290,70,64,16,13,15,60,20
+"Signature Espresso Drinks","Short Nonfat Milk",5,70,26,23,7,1.5,10,20,10
+"Signature Espresso Drinks","2% Milk",15,80,26,22,7,4.5,10,20,10
+"Signature Espresso Drinks","Soymilk",0,60,23,18,6,3.5,6,20,20
+"Signature Espresso Drinks","Tall Nonfat Milk",5,110,37,32,11,2,15,30,20
+"Signature Espresso Drinks","2% Milk",20,120,37,32,10,7,15,30,20
+"Signature Espresso Drinks","Soymilk",0,95,32,25,9,6,10,30,30
+"Signature Espresso Drinks","Grande Nonfat Milk",5,140,48,41,14,2.5,20,40,25
+"Signature Espresso Drinks","2% Milk",25,160,47,41,14,9,20,40,25
+"Signature Espresso Drinks","Soymilk",0,125,41,32,12,7,15,40,40
+"Signature Espresso Drinks","Venti Nonfat Milk",10,180,63,55,18,3,25,50,30
+"Signature Espresso Drinks","2% Milk",35,200,63,54,17,11,25,50,30
+"Signature Espresso Drinks","Soymilk",0,160,55,44,15,9,15,50,50
+"Signature Espresso Drinks","Short",0,10,35,33,0,0,0,0,0
+"Signature Espresso Drinks","Tall",0,15,53,49,0,0,0,0,0
+"Signature Espresso Drinks","Grande",0,20,70,65,0,0,0,0,0
+"Signature Espresso Drinks","Venti",0,25,89,83,0,0,0,0,0
+"Tazo® Tea Drinks","Short",0,0,0,0,0,0,0,0,0
+"Tazo® Tea Drinks","Tall",0,0,0,0,0,0,0,0,0
+"Tazo® Tea Drinks","Grande",0,0,0,0,0,0,0,0,0
+"Tazo® Tea Drinks","Venti",0,0,0,0,0,0,0,0,0
+"Tazo® Tea Drinks","Short Nonfat Milk",0,50,22,21,4,0.1,6,10,0
+"Tazo® Tea Drinks","2% Milk",10,55,22,21,4,2,6,10,0
+"Tazo® Tea Drinks","Soymilk",0,45,20,18,3,1.5,4,10,6
+"Tazo® Tea Drinks","Tall Nonfat Milk",5,80,34,32,6,0.2,10,20,2
+"Tazo® Tea Drinks","2% Milk",15,90,34,32,6,3.5,10,20,2
+"Tazo® Tea Drinks","Soymilk",0,70,31,28,5,2.5,6,20,10
+"Tazo® Tea Drinks","Grande Nonfat Milk",5,105,45,43,8,0.2,15,25,2
+"Tazo® Tea Drinks","2% Milk",20,115,45,42,8,4.5,10,25,2
+"Tazo® Tea Drinks","Soymilk",0,90,41,37,6,3.5,8,25,10
+"Tazo® Tea Drinks","Venti Nonfat Milk",5,135,57,54,10,0.3,15,35,2
+"Tazo® Tea Drinks","2% Milk",25,150,56,53,10,6,15,30,2
+"Tazo® Tea Drinks","Soymilk",0,115,51,46,8,4.5,10,30,15
+"Tazo® Tea Drinks","Short Nonfat Milk",5,85,26,25,7,0.2,10,20,2
+"Tazo® Tea Drinks","2% Milk",15,95,26,25,7,4,10,20,2
+"Tazo® Tea Drinks","Soymilk",0,70,22,20,6,3,8,20,10
+"Tazo® Tea Drinks","Tall Nonfat Milk",5,125,42,41,11,0.4,20,35,4
+"Tazo® Tea Drinks","2% Milk",25,140,41,40,10,6,15,35,4
+"Tazo® Tea Drinks","Soymilk",0,110,36,33,9,4.5,10,35,15
+"Tazo® Tea Drinks","Grande Nonfat Milk",10,160,57,56,14,0.5,25,45,4
+"Tazo® Tea Drinks","2% Milk",30,180,57,55,14,8,20,45,4
+"Tazo® Tea Drinks","Soymilk",0,140,50,46,11,6,15,45,25
+"Tazo® Tea Drinks","Venti Nonfat Milk",10,200,73,71,18,0.5,30,60,6
+"Tazo® Tea Drinks","2% Milk",40,230,72,71,17,10,25,50,6
+"Tazo® Tea Drinks","Soymilk",0,180,64,58,14,8,20,60,30
+"Tazo® Tea Drinks","Short Nonfat Milk",0,45,16,16,4,0.1,6,10,0
+"Tazo® Tea Drinks","2% Milk",10,50,15,15,3,2,6,10,0
+"Tazo® Tea Drinks","Soymilk",0,40,14,13,3,1.5,4,10,6
+"Tazo® Tea Drinks","Tall Nonfat Milk",5,65,23,23,5,0.1,10,20,0
+"Tazo® Tea Drinks","2% Milk",15,75,23,23,5,3,8,15,0
+"Tazo® Tea Drinks","Soymilk",0,60,21,19,4,2.5,6,20,8
+"Tazo® Tea Drinks","Grande Nonfat Milk",5,85,31,31,7,0.2,15,25,0
+"Tazo® Tea Drinks","2% Milk",15,95,31,30,7,4,10,25,0
+"Tazo® Tea Drinks","Soymilk",0,80,27,25,6,3.5,8,25,10
+"Tazo® Tea Drinks","Venti Nonfat Milk",5,110,39,39,9,0.2,15,30,0
+"Tazo® Tea Drinks","2% Milk",20,125,38,38,9,5,15,30,0
+"Tazo® Tea Drinks","Soymilk",0,100,34,32,7,4,10,30,15
+"Tazo® Tea Drinks","Short Nonfat Milk",0,45,16,16,4,0.1,6,10,0
+"Tazo® Tea Drinks","2% Milk",10,50,15,15,3,2,6,10,0
+"Tazo® Tea Drinks","Soymilk",0,40,14,13,3,1.5,4,10,6
+"Tazo® Tea Drinks","Tall Nonfat Milk",5,65,23,23,5,0.1,10,20,0
+"Tazo® Tea Drinks","2% Milk",15,75,23,23,5,3,8,15,0
+"Tazo® Tea Drinks","Soymilk",0,60,21,19,4,2.5,6,20,8
+"Tazo® Tea Drinks","Grande Nonfat Milk",5,85,31,31,7,0.2,15,25,0
+"Tazo® Tea Drinks","2% Milk",15,95,31,30,7,4,10,25,0
+"Tazo® Tea Drinks","Soymilk",0,80,27,25,6,3.5,8,25,10
+"Tazo® Tea Drinks","Venti Nonfat Milk",5,110,39,39,9,0.2,15,30,0
+"Tazo® Tea Drinks","2% Milk",20,125,38,38,9,5,15,30,0
+"Tazo® Tea Drinks","Soymilk",0,100,34,32,7,4,10,30,15
+"Shaken Iced Beverages","Tall",0,4,15,15,0.2,0,0,0,0
+"Shaken Iced Beverages","Grande",0,5,21,21,0.3,0.1,0,0,0
+"Shaken Iced Beverages","Venti",0,5,31,31,0.4,0.1,0,0,0
+"Shaken Iced Beverages","Tall Nonfat Milk",0,25,18,18,2,0.1,2,6,0
+"Shaken Iced Beverages","2% Milk",5,25,18,18,2,1,2,6,0
+"Shaken Iced Beverages","Soymilk",0,20,17,17,2,1,2,6,0
+"Shaken Iced Beverages","Grande Nonfat Milk",0,30,24,24,2,0.1,4,8,2
+"Shaken Iced Beverages","2% Milk",5,35,24,24,2,1.5,4,8,0
+"Shaken Iced Beverages","Soymilk",0,30,23,22,2,1,2,8,0
+"Shaken Iced Beverages","Venti Nonfat Milk",0,50,36,36,4,0.1,6,10,4
+"Shaken Iced Beverages","2% Milk",10,55,36,36,4,2,6,10,0
+"Shaken Iced Beverages","Soymilk",0,45,34,33,3,1.5,4,10,0
+"Shaken Iced Beverages","Tall",0,0,15,15,0,0,0,0,6
+"Shaken Iced Beverages","Grande",0,0,21,21,0,0,0,0,0
+"Shaken Iced Beverages","Venti",0,0,31,31,0,0,0,0,0
+"Shaken Iced Beverages","Tall",0,0,25,24,0.1,0,0,0,0
+"Shaken Iced Beverages","Grande",0,0,33,33,0.1,0,0,0,0
+"Shaken Iced Beverages","Venti",0,0,49,49,0.1,0,0,0,0
+"Smoothies","Grande Nonfat Milk",5,150,53,34,20,2.5,10,20,0
+"Smoothies","2% Milk",15,160,53,34,20,5,8,20,20
+"Smoothies","Soymilk",5,150,51,31,19,4.5,6,20,20
+"Smoothies","Grande Nonfat Milk",5,120,54,37,16,1,50,10,30
+"Smoothies","2% Milk",5,125,53,37,16,1.5,50,10,6
+"Smoothies","Soymilk",5,120,53,36,15,1.5,50,10,6
+"Smoothies","Grande Nonfat Milk",5,125,58,41,16,1,4,10,8
+"Smoothies","2% Milk",5,125,58,41,16,2,4,10,8
+"Smoothies","Soymilk",5,120,58,40,16,2,2,10,8
+"Frappuccino® Blended Coffee","Tall Nonfat Milk",0,160,36,36,3,0.1,4,10,10
+"Frappuccino® Blended Coffee","Whole Milk",10,160,36,36,3,2.5,4,8,0
+"Frappuccino® Blended Coffee","Soymilk",0,150,35,34,2,1.5,4,10,0
+"Frappuccino® Blended Coffee","Grande Nonfat Milk",0,210,51,50,4,0.1,6,10,4
+"Frappuccino® Blended Coffee","Whole Milk",10,220,50,50,3,3,4,10,0
+"Frappuccino® Blended Coffee","Soymilk",0,210,49,47,3,1.5,4,10,0
+"Frappuccino® Blended Coffee","Venti Nonfat Milk",5,300,70,69,6,0.1,10,20,6
+"Frappuccino® Blended Coffee","Whole Milk",15,300,70,69,5,5,8,15,2
+"Frappuccino® Blended Coffee","Soymilk",0,300,68,66,5,2.5,6,20,2
+"Frappuccino® Blended Coffee","Tall Nonfat Milk",0,150,42,40,3,0.5,4,10,8
+"Frappuccino® Blended Coffee","Whole Milk",10,160,42,40,3,3,4,8,6
+"Frappuccino® Blended Coffee","Soymilk",0,150,40,38,3,2,4,10,10
+"Frappuccino® Blended Coffee","Grande Nonfat Milk",0,220,61,58,4,1,6,10,8
+"Frappuccino® Blended Coffee","Whole Milk",10,220,61,58,4,4,4,10,8
+"Frappuccino® Blended Coffee","Soymilk",0,220,59,55,4,2.5,4,10,15
+"Frappuccino® Blended Coffee","Venti Nonfat Milk",5,300,80,76,7,1,10,15,10
+"Frappuccino® Blended Coffee","Whole Milk",15,300,80,76,6,6,8,15,10
+"Frappuccino® Blended Coffee","Soymilk",0,290,78,73,6,3,6,20,20
+"Frappuccino® Blended Coffee","Tall Nonfat Milk",0,160,42,41,3,0.1,4,10,0
+"Frappuccino® Blended Coffee","Whole Milk",10,160,42,41,3,2.5,4,8,0
+"Frappuccino® Blended Coffee","Soymilk",0,150,40,39,2,1.5,4,10,4
+"Frappuccino® Blended Coffee","Grande Nonfat Milk",0,220,60,59,4,0.1,6,10,0
+"Frappuccino® Blended Coffee","Whole Milk",10,220,60,59,3,3.5,4,10,0
+"Frappuccino® Blended Coffee","Soymilk",0,220,58,56,3,1.5,4,10,6
+"Frappuccino® Blended Coffee","Venti Nonfat Milk",5,290,78,77,5,0.1,10,15,2
+"Frappuccino® Blended Coffee","Whole Milk",15,300,78,77,5,5,8,15,2
+"Frappuccino® Blended Coffee","Soymilk",0,290,75,73,5,2.5,6,20,8
+"Frappuccino® Blended Coffee","Tall Nonfat Milk",0,170,47,44,4,3,4,10,20
+"Frappuccino® Blended Coffee","Whole Milk",10,170,47,44,4,5,4,8,20
+"Frappuccino® Blended Coffee","Soymilk",0,170,45,42,3,4,4,10,20
+"Frappuccino® Blended Coffee","Grande Nonfat Milk",0,250,67,62,5,4,6,10,25
+"Frappuccino® Blended Coffee","Whole Milk",10,250,67,62,5,7,4,10,25
+"Frappuccino® Blended Coffee","Soymilk",0,240,65,60,4,6,4,10,30
+"Frappuccino® Blended Coffee","Venti Nonfat Milk",5,340,90,84,7,5,10,20,35
+"Frappuccino® Blended Coffee","Whole Milk",15,340,90,84,7,10,6,15,35
+"Frappuccino® Blended Coffee","Soymilk",0,330,88,80,6,8,6,20,40
+"Frappuccino® Light Blended Coffee","Tall Nonfat Milk",0,160,20,19,3,0.1,4,10,0
+"Frappuccino® Light Blended Coffee","Grande Nonfat Milk",0,210,26,26,3,0.1,6,10,0
+"Frappuccino® Light Blended Coffee","Venti Nonfat Milk",5,270,34,33,5,0.1,8,15,2
+"Frappuccino® Light Blended Coffee","Tall Nonfat Milk",0,150,24,23,3,0.5,4,8,6
+"Frappuccino® Light Blended Coffee","Grande Nonfat Milk",0,200,33,30,4,1,6,10,8
+"Frappuccino® Light Blended Coffee","Venti Nonfat Milk",5,280,46,42,6,1,8,15,10
+"Frappuccino® Light Blended Coffee","Tall Nonfat Milk",0,140,23,23,3,0.1,4,8,0
+"Frappuccino® Light Blended Coffee","Grande Nonfat Milk",0,200,33,32,3,0.1,6,10,0
+"Frappuccino® Light Blended Coffee","Venti Nonfat Milk",5,270,44,43,5,0.1,8,15,2
+"Frappuccino® Light Blended Coffee","Tall Nonfat Milk",0,170,30,27,4,3,4,10,20
+"Frappuccino® Light Blended Coffee","Grande Nonfat Milk",0,240,43,39,5,4,6,10,25
+"Frappuccino® Light Blended Coffee","Venti Nonfat Milk",5,320,58,52,7,5,8,15,35
+"Frappuccino® Blended Crème","Tall Nonfat Milk",0,140,39,38,3,0.1,6,10,2
+"Frappuccino® Blended Crème","Whole Milk",10,140,38,37,3,3,4,10,2
+"Frappuccino® Blended Crème","Soymilk",0,135,37,35,3,1.5,4,10,6
+"Frappuccino® Blended Crème","Grande Nonfat Milk",0,190,53,52,4,0.2,8,15,4
+"Frappuccino® Blended Crème","Whole Milk",10,190,53,52,4,4,6,15,4
+"Frappuccino® Blended Crème","Soymilk",0,180,51,49,3,2,4,15,8
+"Frappuccino® Blended Crème","Venti Nonfat Milk",5,260,70,69,6,0.2,10,20,4
+"Frappuccino® Blended Crème","Whole Milk",15,260,70,68,6,6,8,20,4
+"Frappuccino® Blended Crème","Soymilk",0,250,67,64,5,1.5,6,20,10
+"Frappuccino® Blended Crème","Tall Nonfat Milk",0,160,39,38,4,0.1,6,10,0
+"Frappuccino® Blended Crème","Whole Milk",10,160,39,38,3,3.5,6,10,0
+"Frappuccino® Blended Crème","Soymilk",0,160,37,35,3,1.5,4,10,6
+"Frappuccino® Blended Crème","Grande Nonfat Milk",5,230,56,55,5,0.1,8,15,0

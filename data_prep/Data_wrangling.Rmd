@@ -1,0 +1,413 @@
+---
+title: "Data preparation and feature selection"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r message=FALSE}
+library(stringr)
+library(dplyr)
+```
+
+The tasks: 
+
+* Data preparation: prepare a data set for the use in a machine learning task   
+* Feature selection: select features that might be relevant for a classification task
+
+## Load, inspect, and transform the data
+
+The data originates from the [Nutrition facts for Starbucks Menu](https://www.kaggle.com/datasets/starbucks/starbucks-menu), where further information about it can be found (including the description of all the variables). 
+
+Note: the original data set has been slightly adapted for this class. 
+
+Load the data
+```{r}
+sb_drinks = read.csv("data/starbucks_drinks.csv")
+```
+
+Inspect the data
+```{r}
+glimpse(sb_drinks)
+```
+
+The first thing to do is to examine column types and ponder if the type of each column corresponds to its expected type. 
+For example, `Total_Fat_g` is loaded as a char variable even though we would expect it to be numeric. The same is with `Caffeine_mg.` This happens due to same irregularities in the numeric data, which prevent their proper loading from the file. Let's check:
+
+```{r}
+unique(sb_drinks$Total_Fat_g) |> sort()
+```
+Note the presence of erroneous value "3 2"
+
+```{r}
+unique(sb_drinks$Caffeine_mg) |> sort()
+```
+Note the missing values in the form of "" and "-"
+
+Since these two variables are essentially numeric, we will transform them into numeric type
+```{r}
+sb_drinks$Total_Fat_g <- as.numeric(sb_drinks$Total_Fat_g)
+sb_drinks$Caffeine_mg <- as.numeric(sb_drinks$Caffeine_mg)
+```
+Note that this process introduces NA (for those values that are not numbers) and we will deal with this a bit later.
+
+Now, consider the variables related to the presence of some vitamins and minerals in Starbucks drinks:
+```{r}
+unique(sb_drinks$Vitamin_A_DV)
+```
+
+Obviously, this is also essentially a numeric variable, but due to the used notation, it was stored as a char. Let's transform this and the other three variables with the same value encoding pattern, into numeric
+```{r}
+char_to_num <- function(x) {
+  str_replace(x, pattern = "%", replacement = "") |> as.numeric()  
+}
+
+sb_drinks$Vitamin_A_DV <- char_to_num(sb_drinks$Vitamin_A_DV)
+```
+
+```{r}
+class(sb_drinks$Vitamin_A_DV)
+```
+
+```{r}
+sb_drinks$Vitamin_C_DV <- char_to_num(sb_drinks$Vitamin_C_DV)
+sb_drinks$Calcium_DV <- char_to_num(sb_drinks$Calcium_DV)
+sb_drinks$Iron_DV <- char_to_num(sb_drinks$Iron_DV)
+```
+
+Let's now examine the remaining character variables and see if we can transform them into factors
+```{r}
+char_vars <- c(1:4, 20)
+apply(sb_drinks[,char_vars], 2, n_distinct)
+```
+Considering the small number of observations in the data set (240), the second variable - `Beverage` - has too many distinct values to be used as factors in any prediction task. So, we will leave it as is and transform the other four.
+
+Let's first examine the distribution of those four variables, that is, how frequent the distinct values are
+```{r}
+char_vars <- c(1, 3, 4, 20)
+apply(sb_drinks[,char_vars], 2, function(x) table(x, useNA = 'ifany'))
+```
+Note that for `Milk` and `Size` we, in fact, have 5 and 4 distinct values, respectively, as one of the values is a mark of the missing value(s). 
+
+To avoid having "-" a level of the `Milk` variable, we will first replace it with NA and then proceed to transform the variable to factor
+```{r}
+sb_drinks$Milk[sb_drinks$Milk == "-"] <- NA
+sb_drinks$Milk <- as.factor(sb_drinks$Milk)
+class(sb_drinks$Milk)
+levels(sb_drinks$Milk)
+```
+Observe that factor levels are given in the alphabetical order; more precisely, based on the ASCII values of the leading characters.
+
+Now, for the `Size` variable. This variable can be considered *ordinal* since its values have an ordering - a way to sort from the smallest to the largest. So, when transforming it to a factor, we should explicitly define the order of values, that is, factor levels    
+```{r}
+sb_drinks$Size <- factor(sb_drinks$Size, levels = c("Short", "Tall", "Grande", "Venti"))
+levels(sb_drinks$Size)
+```
+
+IMPORTANT note: only ordinal variables - such as `Size` - can be transform to a number, to be used with algorithms  (like kNN or k-means) that accepts numeric variables only. True categorical variables - such as `Milk` - should **not** be turned into numbers. 
+
+Let's now consider the `Beverage_category` variable:
+```{r}
+table(sb_drinks$Beverage_category) |> sort()
+```
+Considering the small number of occurrences of values 'Coffee', 'Smoothies', 'Frappuccino® Light Blended Coffee', and 'Frappuccino® Blended Creme', it is very likely - especially for 'Coffee' and 'Smoothies' - that when splitting data into training and test sets, we will end up with all 'Coffee' drinks or all 'Smoothies' drinks in the test set. This would cause a problem for many classifiers as they haven't "seen" such values in the training set and do not know how to handle them. To avoid such problems, while still making use of the information about beverage type, we can create a new variable - say `Beverage_group` - by aggregating similar beverage categories:
+```{r}
+sb_drinks$Beverage_group = "Coffee"
+sb_drinks$Beverage_group[sb_drinks$Beverage_category == 'Shaken Iced Beverages'] = "Ice-cold_Drinks"
+sb_drinks$Beverage_group[startsWith(sb_drinks$Beverage_category, 'Frappuccino')] = "Frappuccino"
+sb_drinks$Beverage_group[sb_drinks$Beverage_category %in% c('Smoothies', 'Tazo® Tea Drinks')] = "Non-Coffee_Drinks"
+```
+
+```{r}
+table(sb_drinks$Beverage_group) |> sort()
+```
+
+The final step is to transform the new variable (`Beverage_group`) into a factor:
+```{r}
+sb_drinks$Beverage_group = as.factor(sb_drinks$Beverage_group)
+```
+
+
+The only thing left to do is to transform the binary variable `Is_coffee_drink` into a factor:
+```{r}
+sb_drinks$Is_coffe_drink <- as.factor(sb_drinks$Is_coffe_drink)
+levels(sb_drinks$Is_coffe_drink)
+```
+Note: Binary variables almost always serve as Boolean variables - stating if something is true or false - and can be transformed (from factor) to numeric to be used in an algorithm that works with numeric variables only.    
+
+Check the types again to verify that all variables are now of the expected type
+```{r}
+glimpse(sb_drinks)
+```
+
+## Imputing missing values
+
+Imputation is the replacement of missing values with the best approximations we can come up with. 
+The reason for doing that: no algorithm works with missing values. Even if some of them *seem* to work, they either use internal algorithms to impute the missing values or simply discard observations or variables with missing values.
+
+First, let's check for the presence of missing values. The `summary` function provides that information for numeric and factor variables: 
+```{r}
+summary(sb_drinks)
+```
+
+An alternative way to check for missing values in numeric and factor variables:
+```{r}
+apply(sb_drinks[,3:21], 2, function(x) sum(is.na(x))) |> sort()
+```
+For character variables, we can check for missing values as follows:
+```{r}
+char_vars <- c(1,2)
+apply(sb_drinks[,char_vars], 2, function(x) sum(is.na(x) | trimws(x) == "" | trimws(x) == "-"))
+```
+Note: you should include a check for any other character you've observe or expect to appear in any of the examined character variables
+
+So, we have a couple of missing values in two numeric variables (Total_Fat_g, Caffeine_mg) and in two factor variables (Milk, Size).
+
+### Categorical variables with a small number of missing values
+
+If there are only a couple of missing values in a factor variable, they are replaced by the 'majority class', that is, the most dominant value of that variable. When doing so, it is recommended to identify the dominant value among the subset of observations that are similar to the one with the missing value. For example, in our case, we can identify the dominant value for `Milk` in the category of beverages that the one with the missing value belongs to:
+```{r}
+milk_missing_category <- sb_drinks$Beverage_category[is.na(sb_drinks$Milk)]
+milk_missing_category
+```
+
+```{r}
+sb_drinks$Milk[sb_drinks$Beverage_category == milk_missing_category] |> table()
+```
+
+As we have a tie between two values and the third close behind, let's see how things stand at the level of the overall data set
+```{r}
+table(sb_drinks$Milk)
+```
+
+Based on the above, we'll replace the missing value with "Nonfat_Milk":
+```{r}
+sb_drinks$Milk[is.na(sb_drinks$Milk)] <- "Nonfat_Milk"
+```
+
+Note: a better approach would be to find k nearest neighbors of the instance with the missing `Milk` value, based on all the attributes (except the missing one) and to replace the missing value with the majority value of those k nearest neighbors.  
+
+Next, we need to handle the missing values in the `Size` variable. Since the size of a drink is fairly independent of beverage category or group (can be verified with the Chi-square test), we will use the majority class on the overall data set to fill out the missing values
+
+```{r}
+table(sb_drinks$Size)
+```
+
+```{r}
+sb_drinks$Size[is.na(sb_drinks$Size)] <- "Grande"
+```
+
+
+### Numeric variables with a small number of missing values
+
+In case a numeric variable has a few missing values, we typically replace the missing values with the average value of the variable on a subset of observations that are similar - in "important ways" - to the observation(s) with the missing value. For example, in case of the missing value of the `Total_Fat_g` variable, we can find an instance or a couple of them that are most similar in `Trans_Fat_g`, `Saturated_Fat_g`, and `Calories` values. This can be done, for example, using the kNN algorithm. 
+
+Here, we will use a simpler approach - take the average on a group of observations that belong to the same (relevant) category as the instance(s) with the missing value(s). For example, for the total fat value, the size of the drink and the kind of milk used are relevant, so we will compute average `Total_Fat_g` on a subset determined by these two variables:
+```{r}
+# First, identify values of Milk and Size for the observation with the missing value for Total_Fat_g
+tot_fat_NA_milk <- sb_drinks$Milk[is.na(sb_drinks$Total_Fat_g)]
+print(tot_fat_NA_milk)
+
+tot_fat_NA_size <- sb_drinks$Size[is.na(sb_drinks$Total_Fat_g)]
+print(tot_fat_NA_size)
+```
+
+```{r}
+# Next, compute the average (median) value of Total_Fat_g on all the drinks with the above identified size and milk
+avg_tot_fat <- median(sb_drinks$Total_Fat_g[sb_drinks$Milk == tot_fat_NA_milk &
+                                              sb_drinks$Size == tot_fat_NA_size],na.rm = T)
+avg_tot_fat
+```
+
+```{r}
+# Finally, replace the missing value with the computed average value
+sb_drinks$Total_Fat_g[is.na(sb_drinks$Total_Fat_g)] <- avg_tot_fat
+```
+
+Note: a more precise approach would be to first determine if the variable in question - `Total_Fat_g` in this case - has Normal distribution, and if it does, to use mean as the average value, otherwise, use median. However, since median and mean are very similar in case of Normal distribution and since we are already doing estimation, to simplify things, we use median right away.
+
+Next, we replace the missing values of `Caffeine_mg` in a similar manner as for `Total_Fat_g`. For the quantity of caffeine, we can consider relevant the category and size of drink:
+```{r}
+caffeine_NA_bev_cat <- sb_drinks$Beverage_category[is.na(sb_drinks$Caffeine_mg)]
+print(caffeine_NA_bev_cat)
+
+caffeine_NA_size <- sb_drinks$Size[is.na(sb_drinks$Caffeine_mg)]
+print(caffeine_NA_size)
+```
+
+Since here we have more than one missing value, we are using a loop to compute the average value on a relevant subset and then replace the missing values with the computed average value
+```{r}
+caffeine_NA_size <- caffeine_NA_size[1] #since the two are the same
+
+for(cat in caffeine_NA_bev_cat) {
+  avg_caffeine <- median(sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == cat &
+                                              sb_drinks$Size == caffeine_NA_size], na.rm = T)
+  sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == cat &
+                          sb_drinks$Size == caffeine_NA_size &
+                          is.na(sb_drinks$Caffeine_mg)] <- avg_caffeine
+}
+```
+
+There should be no more NAs,let's check
+```{r}
+all(complete.cases(sb_drinks))
+```
+
+IMPORTANT note: if a variable has a lot of missing values, it should be removed from the data set. The above described imputation approaches are only suitable for a small number of missing values. There are sophisticated imputation methods that can be used to fill out many more missing values, but these are out of the scope of this course.   
+
+## Feature selection
+
+To select features to be used for creating a prediction model, we have to examine if and to what extent features are associated with the response (outcome) variable.
+
+If we are familiar with the domain of the problem (prediction task), we can start from the knowledge and/or intuition about the predictors. On the other hand, if the domain is unknown to us (for example, predictions related to some sophisticated biological processes) or variable names are withdrawn (as is often the case in sensitive domains), we have to rely on some well establish general methods for feature selection (such as forward or backward selection).
+
+We have already explored how to select variables in case of the regression task. Likewise, we have seen criteria for selecting variables for clustering. Now, we will consider the classification task.
+
+First, let's create the outcome variable. For the sake of an example, we will create a variable that distinguishes between drinks that can be considered a healthier choice and those that are less healthy choice. We will define here healthier choice as drinks with below average value of sugar, cholesterol, and trans fat.   
+
+```{r}
+avg_sugar <- median(sb_drinks$Sugars_g)
+avg_cholesterol <- median(sb_drinks$Cholesterol_mg)
+avg_trans_fat <- median(sb_drinks$Trans_Fat_g)
+
+sb_drinks$HealthierChoice <- ifelse(sb_drinks$Sugars_g < avg_sugar &
+                                       sb_drinks$Cholesterol_mg < avg_cholesterol &
+                                       sb_drinks$Trans_Fat_g < avg_trans_fat,
+                                     yes = "Yes", no = "No")
+
+sb_drinks$HealthierChoice <- as.factor(sb_drinks$HealthierChoice)
+```
+
+```{r}
+table(sb_drinks$HealthierChoice) |> prop.table() |> round(4)
+```
+
+Remove the variables that were used for the creation of outcome variable as these should not be used in a prediction model
+```{r}
+sb_drinks$Sugars_g <- NULL
+sb_drinks$Cholesterol_mg <-NULL
+sb_drinks$Trans_Fat_g <- NULL
+```
+
+We will examine the relevance of remaining variables for predicting the outcome, through visual exploratory analysis
+```{r}
+library(ggplot2)
+```
+
+To examine association between a factor variable and the outcome (also factor) variable, we typically use bar plots.
+For example, we can check how milk used in drink is related to the drink being considered a healthier choice:
+```{r}
+ggplot(sb_drinks,
+       aes(x = Milk, fill = HealthierChoice)) +
+  geom_bar(position = "dodge", width = 0.6) +
+  theme_minimal()
+```
+What we are looking for is the difference in distribution of the outcome variable across the values of the examined variable. Specifically, in the context of the `Milk` variable, we want to see if there is equal or different probability of the Yes and No values for Soy milk vs Nonfat_Milk vs. Whole_Milk ... If they are different, it means that `Milk` variable is relevant for the prediction of the outcome variable as its values allow for differentiating between drinks that are healthier choice from those that are not.    
+
+It looks fairly clear from the above plot that Milk is associated with how healthy a drink is. To get an even better view of that, instead of counts (absolute values), we will use proportions, by just changing the value of the `position` parameter of the `geom_bar` function:
+```{r}
+ggplot(sb_drinks,
+       aes(x = Milk, fill = HealthierChoice)) +
+  geom_bar(position = "fill", width = 0.6) + # note that the position parameter now has value "fill"
+  labs(x= "\nMilk", y = "Proportion\n") +
+  theme_minimal()
+```
+
+Let's now check if knowing if a drink is a coffee drink helps in determining if it is a healthier choice:
+```{r}
+ggplot(sb_drinks,
+       aes(x = Is_coffe_drink, fill = HealthierChoice)) +
+  geom_bar(position = "dodge", width = 0.6) +
+  theme_minimal()
+```
+
+Not very clear from the plot above as there are many more coffee drinks than other kinds of drinks. So, we will use proportions instead:
+```{r}
+ggplot(sb_drinks,
+       aes(x = Is_coffe_drink, fill = HealthierChoice)) +
+  geom_bar(position = "fill", width = 0.6) +
+  labs(x= "\nSize", y = "Proportion\n") +
+  theme_minimal()
+```
+Very small difference, suggesting that the `Is_coffe_drink` variable would be a poor predictor of the outcome variable
+
+We can also examine interaction of two variables
+```{r}
+ggplot(sb_drinks,
+       aes(x = Milk, fill = HealthierChoice)) +
+  geom_bar(position = "fill", width = 0.6) +
+  labs(x= "\nMilk", y = "Proportion\n") +
+  facet_wrap(~Is_coffe_drink, scales = "free") +
+  theme_minimal()
+```
+We can observe that coffee drinks with no milk or with nonfat milk are more likely to be healthier choice than non-coffee drinks with no milk, or non-fat milk. The opposite is true for soy milk. So, if we are working with a classification algorithm that can leverage interaction of variables (e.g., logistic regression), using the interaction of these two variables can bring some additional signal to the model. This also shows that even though `Is_coffe_drink` on its own is not relevant for prediction, in interaction with `Milk`, it can be relevant.     
+
+
+For continuous variables, we use histogram or probability density function to inspect the relation between an input variable and the outcome. In such plots, we examine the presence or extent of difference in the distribution of the variable's values for the different values of the outcome variable. For example, we can examine how relevant the quantity of proteins is for distinguishing between less and more healthy drink choices:  
+```{r}
+ggplot(sb_drinks,
+       aes(x = Protein_g, fill = HealthierChoice)) +
+  geom_density(alpha=0.65) +
+  theme_minimal()
+```
+We can observe a clear difference in the distributions: healthier choices tend to have lower quantity of proteins. So, the `Protein_g` variable is expected to be a relevant predictor.  
+
+Let's take one more more - for example, `Iron_DV`
+```{r}
+ggplot(sb_drinks,
+       aes(x = Iron_DV, fill = HealthierChoice)) +
+  geom_density(alpha=0.65) +
+  theme_minimal()
+```
+Again, healthier choices tend to have lower values of iron and very different distribution than less healthy choices, suggesting that `Iron_DV` is also expected to be a good predictor of the outcome variable.
+
+If it's easier for you, you may also use boxplots:
+```{r}
+ggplot(sb_drinks,
+       aes(x = HealthierChoice, y = Iron_DV, fill = HealthierChoice)) +
+  geom_boxplot() +
+  theme_minimal()
+```
+
+
+
+Finally, here is how you can quickly create plots for all factor and continuous variables:
+```{r}
+# take the names of the factor variables
+factor_var_names = colnames(sb_drinks)[c(3,4,17)]
+
+# function for plotting a variable with the given name
+# the notation .data[[var_name]] in the code below allow us to access column from the 'current' data frame (in this case, sb_drinks) with the name given as the input variable of the function (var_name) 
+plot_factor_var <- function(var_name) {
+  ggplot(sb_drinks,
+       aes(x = .data[[var_name]], fill = HealthierChoice)) +
+  geom_bar(position = "fill", width = 0.6) +
+  labs(y = "Proportion\n") +
+  theme_minimal()
+}
+
+# applying the plotting function to all factor variables
+lapply(factor_var_names, plot_factor_var)
+```
+
+Similar for numeric variables
+```{r}
+# take the names of the factor variables
+num_var_names = colnames(sb_drinks)[c(5:16)]
+
+# function for plotting a variable with the given name
+plot_num_var <- function(var_name) {
+  ggplot(sb_drinks,
+       aes(x = .data[[var_name]], fill = HealthierChoice)) +
+  geom_density(alpha = 0.6) +
+  theme_minimal()
+}
+
+# applying the plotting function to all factor variables
+lapply(num_var_names, plot_num_var)
+```
+
+
+
+
+

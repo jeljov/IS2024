@@ -1,0 +1,528 @@
+---
+title: "Feature engineering"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+Task: To predict students' eventual course outcomes based on the data about their interaction with online course activities during the first few weeks of the course 
+
+Rationale: To be able to timely warn students who are at the risk of having low course outcome 
+
+Data set: The data used below is an adapted (simplified) version of the publicly available [Moodle Learning Analytics data set](https://github.com/sonsoleslp/labook-data/tree/main/1_moodleLAcourse) 
+
+
+Load the required R packages (additional ones will be loaded as needed)
+```{r message=FALSE}
+library(ggplot2)
+library(dplyr)
+
+data_dir = "data"
+```
+
+## Exploratory data analysis
+
+## Load the data
+
+We have two data sets, one with logged events data and the other with the student grades
+```{r}
+events = read.csv(paste(data_dir, "events.csv", sep='/'))
+grades = read.csv(paste(data_dir, "grades.csv", sep = '/'))
+```
+
+```{r}
+glimpse(events)
+```
+
+```{r}
+glimpse(grades)
+```
+Note that based on the data set as originally given, we cannot make predictions about student course outcomes: the only variables we have are `action` and `ts` and these - in the given form - cannot be used for any meaningful prediction. So, we have to create ('engineer') new features that will be used for the prediction task.    
+
+
+### Explore logged events
+
+We will first focus on the time stamps (datetime) data and explore how we can make use of it
+```{r}
+events$ts[1:10]
+```
+
+To handle datetime data easily and effectively, we will use the [`lubridate` R package](https://lubridate.tidyverse.org/)
+```{r message=FALSE}
+library(lubridate)
+```
+
+Let's start by transforming time stamp data, from char format, to the R's format suitable for working with date and time 
+
+```{r}
+?parse_date_time
+```
+
+```{r}
+ev1 = parse_date_time(events$ts[1], "ymd HMS")
+ev1
+```
+
+```{r}
+class(ev1)
+```
+Note that `POSIXct` is the native R's format for representing date and time and it stores datetime data as the number of seconds from January 1st, 1970, the so-called [Unix timestamp](https://www.unixtimestamp.com/).
+
+```{r}
+ev2 = parse_date_time(events$ts[2], "ymd HMS")
+ev1 - ev2
+class(ev1 - ev2)
+```
+
+An alternative is to use functions specialised for some commonly used datetime formats - for example, for the above one, we could have used the `ymd_hms()` function:
+```{r}
+ymd_hms(events$ts[1])
+```
+
+Now, apply it to the entire column with the timestamp data:
+```{r}
+events$dt = parse_date_time(events$ts, "ymd HMS")
+```
+
+```{r}
+events[1:10, c("ts","dt")]
+```
+
+Remove the original (character) timestamp variable, as it is no longer needed 
+```{r}
+events$ts = NULL
+```
+
+When we have datetime (timestamp) data in the R's native datetime format, we can use functions from the *lubridate* package to easily extract individual pieces of date and time:    
+```{r}
+date(events$dt) |> head() |> print()
+# day(events$dt) |> head() |> print()
+# hour(events$dt) |> head() |> print()
+# isoweek(events$dt) |> head() |> print()
+```
+For more functions, see *lubridate* cheatsheets available, for example, [here](https://rstudio.github.io/cheatsheets/html/lubridate.html)
+
+We can also order the events, for each user, based on their time stamp 
+```{r}
+# note: arrange f. comes from dplyr package and allows for sorting a data frame based on one or more columns
+events |> arrange(user, dt) -> events
+
+head(events)
+```
+
+Let's now examine the time range the data is available for. This should (roughly) coincide with the start and the end of the course
+```{r}
+course_start <- min(events$dt)
+print(course_start)
+```
+
+```{r}
+course_end <- max(events$dt)
+print(course_end)
+```
+
+We can also easily compute the course length (in weeks):
+```{r}
+# ?difftime
+
+course_len = difftime(course_end, course_start, units="week")
+```
+
+Alternatively:
+```{r}
+course_len = course_end - course_start 
+# in this case, the 'auto' option is applied to choose the most suitable unit option
+# see the documentation of `difftime` for details
+
+# course_len = course_len / 7
+```
+
+Since we want to make predictions based on the first couple of weeks data, we need to add a variable denoting the course week when an event occurred - this will allow us to subset the data set and take only events that took place in the given number of course weeks.
+```{r}
+get_course_week <- function(dt) {
+  week = isoweek(dt)  # this will give us, for each timestamp, the week of the year 
+  week - min(week) + 1 # this will give us the course week, as a number between 1 and 7 
+}
+
+events$course_week = get_course_week(events$dt)
+```
+
+Check the distribution of event counts across the course weeks
+```{r}
+table(events$course_week)
+```
+
+We can also do that visually (distribution is always better understood when preented visually)
+```{r}
+table(events$course_week) |> as.data.frame() -> events_per_week
+
+ggplot(events_per_week, aes(x = Var1, y = Freq, group=1)) + 
+  geom_line() + geom_point() +
+  labs(x = "Week", y = "Event count\n") +
+  theme_minimal()
+```
+
+Let's now examine the character variable that represents different types of learning-related actions
+```{r}
+table(events$action)|> prop.table() |> round(digits = 3)
+```
+Some of these actions refer to individual course topics, that is, to the access to lecture materials on distinct course topics. These are: General, Applications, Theory,  Ethics, Feedback, La_types. 
+We will mark them all as "Lecture", both to reduce the level of granularity, and to avoid mixture of activity types and activity topics
+```{r}
+course_topics <- c("General", "Applications", "Theory",  "Ethics", "Feedback", "La_types")
+
+events$action = ifelse(test = events$action %in% course_topics, 
+                       yes = "Lecture", 
+                       no = events$action)
+```
+
+```{r}
+table(events$action)|> prop.table() |> round(digits = 3)
+```
+
+Before moving to the feature engineering, let's also prepare the outcome variable
+
+### Examine grades data
+
+Examine the summary statistics and distribution of the final grade
+```{r}
+summary(grades$grade)
+```
+
+We'll add *course_outcome* as a binary variable indicating if a student had a good or weak course outcome.
+Students whose final grade is above 50th percentile (median) will be considered as having good course outcome (HIGH), the rest will be considered as having weak course outcome (LOW)
+```{r}
+grades$course_outcome = ifelse(test=grades$grade > median(grades$grade), yes = "High", no = "Low")
+grades$course_outcome = as.factor(grades$course_outcome)
+```
+
+```{r}
+table(grades$course_outcome)
+```
+This gives us a perfectly balanced data set for the outcome prediction (classification) task. 
+
+As done before, we remove the variable we used for creating the outcome variable
+```{r}
+grades$grade <- NULL
+```
+
+Save pre-processed data
+```{r}
+saveRDS(grades, paste(data_dir, "grades_preprocessed.RDS", sep='/'))
+saveRDS(events, paste(data_dir, "events_preprocessed.RDS", sep='/'))
+```
+
+
+## Feature creation (engineering)
+
+If pre-processing not done, load the pre-processed data
+```{r}
+# grades = readRDS(paste(data_dir, "grades_preprocessed.RDS", sep='/'))
+# events = readRDS(paste(data_dir, "events_preprocessed.RDS", sep='/'))
+```
+
+We will create the following features for each student:
+
+* Number of active days, where active days are days with at least one learning action
+* Average number of actions per day (considering active days only)
+* Average time distance between two consecutive active days
+* Total number of each type of learning actions
+
+Since the intention is to create a prediction model based on the first few weeks of the logged course data - say, **first three weeks** - we will start by creating a subset of the `events` data that includes only logged actions from the first three course weeks:
+```{r}
+events_subset = events[events$course_week <= 3, ]
+```
+
+```{r}
+dim(events_subset)
+```
+
+(1) Compute the number of active days (= days with at least one learning action)
+
+To compute the number of active days, we need to add the date variable
+```{r}
+events_subset$active_day = date(events_subset$dt)
+
+events_subset[sample(1:nrow(events_subset), 10), c("dt", "active_day")]
+```
+
+Now, let's compute the number of active days per student 
+```{r}
+events_subset |>
+  group_by(user) |>
+  summarise(adays_cnt = n_distinct(active_day)) -> active_days_count
+```
+
+```{r}
+head(active_days_count)
+```
+
+```{r}
+summary(active_days_count$adays_cnt)
+```
+
+(2) Next, compute average number of actions per active day
+
+First, we'll compute the number of actions per user per (active) day
+```{r}
+events_subset |> count(user, active_day) -> cnt_per_user_aday
+
+head(cnt_per_user_aday, 10)
+```
+
+Then, we'll average the number of action (n) for each user
+```{r}
+cnt_per_user_aday |>
+  group_by(user) |>
+  summarise(avg_action_cnt = median(n)) -> avg_cnt_per_aday
+```
+
+```{r}
+head(avg_cnt_per_aday)
+```
+
+
+(3) Average time distance between two consecutive active days
+
+We will do this in a step-wise manner to make the computation clearer
+
+First, reduce the data set to distinct active days for each user. The rationale: since we need to compute time distance between consecutive active days, we need just one occurrence of each active day 
+```{r}
+events_subset |>
+  distinct(user, active_day) |>
+  arrange(user, active_day) -> distinct_user_aday
+```
+
+```{r}
+head(distinct_user_aday, 10)
+```
+
+Next, add a variable that will for each active day store the immediate previous active day (if it exists)
+Note the use of two new functions: i) `mutate` allows for creating new variables in a data frame; ii) `lag` returns the value of the given variable lagged for the given number of steps, by default 1 
+```{r}
+distinct_user_aday |>
+  group_by(user) |>
+  mutate(prev_active_day = lag(active_day)) -> distinct_user_aday
+
+head(distinct_user_aday, 10)
+```
+
+Now we can add a variable for the time difference between an active day and the immediate previous (active) day.
+We compute this for each user separately.
+```{r}
+distinct_user_aday |>
+  group_by(user) |>
+  mutate(aday_diff = ifelse(is.na(prev_active_day),
+                            yes = NA,
+                            no = difftime(active_day, prev_active_day, units = "days"))) -> distinct_user_aday
+```
+
+```{r}
+head(distinct_user_aday, 10)
+```
+
+Finally, we can compute, for each user, the average (median) time distance between any two consecutive active days 
+```{r}
+distinct_user_aday |>
+  group_by(user) |>
+  summarise(avg_aday_diff = median(aday_diff, na.rm=T)) -> avg_aday_time_diff
+```
+
+```{r}
+head(avg_aday_time_diff, 10)
+```
+
+```{r}
+summary(avg_aday_time_diff$avg_aday_diff)
+```
+
+
+(4) Total number of each type of learning action
+
+We can easily compute, for each student, the number of actions of distinct types: 
+```{r}
+events_subset |>
+  count(user, action) -> counts_per_user
+```
+
+```{r}
+head(counts_per_user)
+```
+However, this format of the computed action counts cannot serve as the input for a classification algorithm. What we need is a data frame with columns corresponding to distinct types of actions (e.g., Course_view, Group_work, Lecture, ...) and values of those columns being counts of students' actions of the given type. In particular, we want unique values of the `action` column to be the columns in a data frame, whereas values of the column `n` should be used to populate those columns. 
+
+This is, in fact, a very frequent problem and a solution is readily available from the the *tidyr* package. It is known as transforming data from the *long format* (the one given above) to the *wide format* (our target, see the output of the cell below). The name *long format* refers to (relatively) small number of columns and (relatively) large number of rows. On the other hand, the name *wide format* refers to the opposite - (relatively) large number of columns and (relatively) small number of rows.        
+
+```{r}
+library(tidyr)
+```
+
+The function we'll use is `pivot_wider`
+```{r}
+?pivot_wider
+```
+
+```{r}
+counts_per_user |>
+  pivot_wider(id_cols = user, 
+              names_from = action, 
+              values_from = n, 
+              values_fill = 0) -> counts_per_user_wide
+  
+```
+
+```{r}
+head(counts_per_user_wide)
+```
+
+Compare the dimensions of the long and wide formats (of the same data):
+```{r}
+print(paste("Long format:", nrow(counts_per_user), "rows and", ncol(counts_per_user), "columns"))
+print(paste("Wide format:", nrow(counts_per_user_wide), "rows and", ncol(counts_per_user_wide), "columns"))
+```
+
+Now that we have computed all the features, we should integrate them into one data frame. This can be easily done using the `inner_join` f. from *dplyr* package. This function works like the inner join operation in data bases.
+```{r}
+active_days_count |>
+  inner_join(avg_cnt_per_aday) |> 
+  inner_join(avg_aday_time_diff) |>
+  inner_join(counts_per_user_wide) -> feature_set
+```
+Note that here we didn't specify the column(s) to be used for joining the data frames and the `inner_join` function used the column that the two data frames it was joining had in common (in this case the `user` column)
+
+```{r}
+head(feature_set, 10)
+```
+
+Add the outcome variable
+```{r}
+feature_set |>
+  inner_join(grades) -> feature_set
+```
+
+Check the structure and completeness of the resulting data set
+```{r}
+glimpse(feature_set)
+```
+
+```{r}
+all(complete.cases(feature_set))
+```
+
+
+### Examine feature relevance
+
+Examine the relevance of features for the prediction of the outcome variable
+
+Let's first recall how we can do it for one continuous variable 
+```{r}
+ggplot(feature_set, 
+       aes(x = adays_cnt, fill=course_outcome)) +
+  geom_density(alpha=0.5) +
+  theme_minimal()
+```
+Clearly, the number of active days is relevant for predicting the course outcome, since the plot indicates that students with more active days tend to have high course performance
+
+Now, do for all features at once:
+```{r}
+feature_names <- colnames(feature_set)[2:11]
+
+# Note: the notation .data[[fn]] in the code below allows us to access a column from the 'current' data frame 
+# (in this case, final_ds) with the name given as the input variable of the function (fn) 
+lapply(feature_names,
+       function(fn) {
+         ggplot(feature_set, aes(x = .data[[fn]], fill=course_outcome)) +
+           geom_density(alpha=0.5) +
+           theme_minimal()
+       })
+```
+
+The plots suggest that all features - except for `avg_action_cnt`, `Assignment` and maybe `Lecture` - are potentially relevant for predicting the course outcome.
+
+```{r}
+feature_set |>
+  select(-c(Assignment, avg_action_cnt)) -> final_ds
+```
+
+We have now completed the feature engineering and selection work. Since we have a small number of observations and all features are numerical, we can use kNN. As this is something we have done before, the rest of the code will not be commented in detail.
+
+## Predictive modeling
+
+Load additional R packages required for model building and evaluation 
+```{r message=FALSE}
+library(caret)
+library(class)
+```
+
+Recall that kNN requires that all features have roughly equal value ranges. So, we will first check that and do rescalling if value ranges notably differ.
+```{r}
+summary(final_ds)
+```
+Clearly, rescalling is required. We need to determine how to do it...  
+
+```{r}
+apply(final_ds[,c(2:9)], 2, function(x) length(boxplot.stats(x)$out))
+```
+Considering the presence of outliers, we will do standardization
+
+```{r}
+apply(final_ds[,c(2:9)], 2, 
+      function(x) scale(x, center = median(x), scale = IQR(x))) |> as.data.frame() -> final_rescaled
+```
+
+```{r}
+summary(final_rescaled)
+```
+
+Add the outcome variable to complete the data set
+```{r}
+final_rescaled$course_outcome <- final_ds$course_outcome
+```
+
+Split the data into training and test sets
+```{r}
+set.seed(2024)
+for_training = createDataPartition(final_rescaled$course_outcome, p = 0.8, list = FALSE)
+train_data = final_rescaled[for_training,]
+test_data = final_rescaled[-for_training,]
+```
+
+Use cross-validation to determine the optimal value for K (the number of nearest neighbours to consider)
+```{r}
+k_grid <- expand.grid(.k = seq(3, 15, 2))
+ctrl <- trainControl(method = "CV", number = 10)
+
+set.seed(2024)  
+knn_cv <- train(x = train_data[,-9],
+                y = train_data$course_outcome,
+                method = "knn",
+                tuneGrid = k_grid,
+                trControl = ctrl)
+  
+knn_cv
+```
+
+Make predictions on the test set using the optimal value for K
+```{r}
+knn_pred = knn(train = train_data[,-9],
+               test = test_data[,-9],
+               cl = train_data$course_outcome,
+               k = knn_cv$bestTune$k)
+```
+
+Evaluate the predictions using the standard set of evaluation measures
+```{r}
+source("util.R")
+```
+
+```{r}
+cm <- table(true = test_data$course_outcome, 
+            predicted = knn_pred)
+
+cm
+```
+
+```{r}
+compute_eval_measures_v1(cm)
+```
+The results suggest that already early in this course, it is possible to fairly well predict students at risk of low performance (positive class in this case). For example, out of all those who eventually showed low course performance, we have correctly identified 75% of them. Likewise, when predicting someone as having low course performance, we were correct in 82% of cases.   
+

@@ -1,8 +1,10 @@
 ---
 title: "Clustering: k-means"
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   html_notebook: default
+  pdf_document: default
 ---
 
 The task: to group Starbucks beverages based on their nutritional characteristics 
@@ -81,8 +83,8 @@ check_outliers = function(x) {
   if(length(boxplot.stats(x)$out) == 0)
    return("No outliers")
   
-  top_whisker = boxplot.stats(x)$stats[1]
-  bottom_whisker = boxplot.stats(x)$stats[5]
+  top_whisker = boxplot.stats(x)$stats[5]
+  bottom_whisker = boxplot.stats(x)$stats[1]
   n_upper_outliers = sum(boxplot.stats(x)$out > top_whisker)
   n_bottom_outliers = sum(boxplot.stats(x)$out < bottom_whisker)
   
@@ -103,24 +105,23 @@ library(DescTools)
 
 Let's start with `sodium` which we've already examined above:
 ```{r}
-sb_numeric$sodium = Winsorize(sb_numeric$sodium, probs = c(0,0.95))
+sb_numeric$sodium = Winsorize(sb_numeric$sodium, 
+                              quantile(sb_numeric$sodium, probs = c(0,0.95)))
 
 boxplot(sb_numeric$sodium)
 ```
 
 We'll do the same for the other variables with outliers:
 ```{r}
-cholesterol_w = Winsorize(sb_numeric$cholesterol, probs = c(0,0.95))
-sugar_w = Winsorize(sb_numeric$sugar, probs = c(0,0.95))
-total_fat_w = Winsorize(sb_numeric$total_fat, probs = c(0,0.95))
-vitamine_A_w = Winsorize(sb_numeric$vitamine_A, probs = c(0,0.95))
-iron_w = Winsorize(sb_numeric$iron, probs = c(0,0.95))
+apply(sb_numeric[,c("cholesterol", "sugar","total_fat", "vitamine_A", "iron")], 
+      2,
+      function(x) Winsorize(x, quantile(x, probs=c(0, 0.95)))) |> 
+  as.data.frame() -> sb_sub_trimmed
 ```
 
 Let's check if we have resolved the problem with outliers
 ```{r}
-df = data.frame(cholesterol_w, sugar_w, total_fat_w, vitamine_A_w, iron_w)
-apply(df, 2, check_outliers) |> as.data.frame()
+apply(sb_sub_trimmed, 2, check_outliers) |> as.data.frame()
 ```
 The iron variable still has outliers -> we need to use a lower percentile for the replacement of extreme values
 
@@ -135,15 +136,12 @@ quantile(sb_numeric$iron, probs = seq(0.9, 1, 0.01))
 ```
 
 ```{r}
-iron_w = Winsorize(sb_numeric$iron, probs = c(0,0.92))
-boxplot(iron_w, main="Iron after winsorizing w/ 92. percentile")
+iron_w = Winsorize(sb_numeric$iron, quantile(sb_numeric$iron, probs = c(0,0.92)))
+boxplot.stats(iron_w)$out
 ```
 Now, it's OK. What is left is to replace the existing values of the variables with outliers, with Winsorized version of those variables  
 ```{r}
-sb_numeric$cholesterol = cholesterol_w
-sb_numeric$sugar = sugar_w
-sb_numeric$total_fat = total_fat_w
-sb_numeric$vitamine_A = vitamine_A_w
+sb_numeric[,c("sodium", "total_carbs", "protein", "calcium")] |> cbind(sb_sub_trimmed) -> sb_numeric
 sb_numeric$iron = iron_w
 ```
 
@@ -159,7 +157,7 @@ normalise <- function(var) {
   (var - min(var, na.rm = T))/(max(var, na.rm = T) - min(var,na.rm = T))
 }
 
-sb_norm = apply(sb_numeric, 2, normalise) |> as.data.frame()
+apply(sb_numeric, 2, normalise) |> as.data.frame() -> sb_norm
 ```
 
 ```{r}
@@ -205,10 +203,10 @@ Recall that for k-means we need to set the number of clusters as one of the algo
 To get a first glimpse at how the algorithm works when applied to the data, we will make an "informed guess" regarding the number of clusters based on the general awareness of the kinds of drinks that Starbucks offers. 
 For example, we can expect 4 clusters: 
 
-* one formed of different kinds of regular coffee; 
-* another of coffees with various kinds of additions; 
-* the third could be regular tea and soft drinks, and 
-* the forth one, a variety of customised teas and soft drinks.
+* one formed of different kinds of regular coffee and tea; 
+* another of coffees and teas with various kinds of additions; 
+* the third could be regular soft drinks, and 
+* the forth one, a variety of customised soft drinks.
 
 Run the k-means algorithm, we will use the *kmeans* function
 ```{r}
@@ -233,9 +231,9 @@ Among other things, the output of the kmeans f. includes the following evaluatio
 
 - **within-cluster sum of squares** (`within_SS`): The sum of squared differences between individual data points in a cluster and the cluster center (centroid). It is computed for each cluster separately; the smaller, the better.
 
-- **between cluster sum of squares** (`between_SS`): The sum of squared differences between each cluster center (centroid) and the global sample mean; when computing this value, for each cluster center, the squared difference is multiplied by the number of data points in that cluster (to account for the cluster size); the higher this value, the better
-
 - **total sum of squares** (`total_SS`): The sum of squared differences of each data point from the global sample mean; this represents the overall measure of dispersion; the smaller, the better 
+
+- **between cluster sum of squares** (`between_SS`): The sum of squared differences between each cluster center (centroid) and the global sample mean; when computing this value, for each cluster center, the squared difference is multiplied by the number of data points in that cluster (to account for the cluster size); the higher this value, the better
 
 - **between_SS / total_SS**: This ratio indicates how well the sample splits into clusters; the higher the ratio, the better the clustering. The maximum is 1.
 
@@ -306,18 +304,20 @@ source("clustering_util.R")
 ```
 
 If any of the features that were excluded due to high correlation with other features, is considered relevant for better understanding of the identified clusters, we can also use them for cluster interpretation and comparison. 
-For example, since the ultimate intention is to identify categories of Starbucks drinks based on their nutritional values and enable Starbucks customers to make health-conscious decision of their drinks, we can opt for the following set of features:   
+For example, since the ultimate intention is to identify clusters of Starbucks drinks based on their nutritional values and enable Starbucks customers to make health-conscious decision of their drinks, we can opt for the following set of features:   
 ```{r}
 f_selection = which(colnames(sb_norm) %in% c("cholesterol", "sodium", "sugar", "protein", "total_fat"))
 ```
 
 Let's start with the 4 clusters solution and explore summary statistics (mean and SD) of the feature selection we've made
 ```{r}
+# note: for this function to work, you'll need to install the following R packages: dplyr, tidyr, and stringr
 summary_stats(sb_norm[,f_selection], km_4k$cluster)
 ```
-Due to the high SD of almost all feature-cluster combinations, mean values can be misleading. Therefore, it is better to examine and compare the overall distribution of features across the clusters:   
+Due to the high SD of almost all feature-cluster combinations, mean values can be misleading. Therefore, it is better to examine and compare the overall distribution of features across the clusters:
 
 ```{r}
+# note: for this function to work, you'll need to install the ggpubr package
 create_comparison_plots(sb_norm[,f_selection], km_4k$cluster, ncol = length(f_selection))
 ```
 We can observe:
@@ -341,22 +341,17 @@ create_comparison_plots(sb_norm[,f_selection], km_3k$cluster, ncol = length(f_se
 ```
 We can observe:
 
-* Cluster 2 is exceeding the other two in terms of total fat and protein, and is comparable to Cluster 3 in terms of sodium and sugar
-* Cluster 3 is exceeding the other two in terms of cholesterol. It is comparable to Cluster 2 in sodium and sugar, and is somewhat nagging behind in proteins and total fat
-* Cluster 1 has the lowest values of all the nutrients
+* Cluster 1 is low in cholesterol, moderate in sodium and protein, and moderate to high n sugar and total fat
+* Cluster 2 is comparable to Cluster 1 in sodium, protein, and sugar, and is somewhat lagging behind in total fat; however, it is far above the other two clusters in terms of cholesterol
+* Cluster 3 has the lowest values of all the nutrients
 
 All in all, the solution with 4 clusters is the better both from the perspective of the cluster quality measures and the interpretation / "meaningfulness" perspective.
 
 
-Let's also check the distribution of drink preparation variants (the `beverage_prep` variable) in each cluster since drink preparation may help explain the observed difference in nutrient values across the clusters
+Let's also check the distribution of drink preparation variants (the `beverage_prep` variable) in each cluster (of the 4-cluster solution) since drink preparation may help explain the observed difference in nutrient values across the clusters
 ```{r}
 table(drink_types = sb_drinks$beverage_prep, clust = km_4k$cluster) |> prop.table(margin = 2) |> round(digits = 3)
 ```
 All drinks in cluster 1 are prepared either w/ 2% [fat] milk or with whole milk, which can account for the high values of total fat, cholesterol, protein...
 On the other hand, drinks in the 3rd cluster (the most "healthy" one) are prepared primarily with non-fat milk and soy milk.
 The dominance of soy milk among the preparation methods of cluster 4 can explain (at least to an extent) the nutrient values observed in that cluster (barista soy milk is not a healthy choice).
-
-We can also examine the drink types across the clusters:
-```{r}
-table(drink_types = sb_drinks$beverage_type, clust = km_4k$cluster)
-```

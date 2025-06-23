@@ -87,7 +87,7 @@ Let's first examine the distribution of those four variables, that is, how frequ
 char_vars <- c(1, 3, 4, 20)
 apply(sb_drinks[,char_vars], 2, function(x) table(x, useNA = 'ifany'))
 ```
-Note that for `Milk` and `Size` we, in fact, have 5 and 4 distinct values, respectively, as one of the values is a mark of the missing value(s). 
+Note that for `Milk` and `Size` we, in fact, have 5 and 4 distinct values, respectively, as one of the values is an indicator of the missing value(s). 
 
 To avoid having "-" a level of the `Milk` variable, we will first replace it with NA and then proceed to transform the variable to factor
 ```{r}
@@ -163,16 +163,21 @@ Note: you should include a check for any other character you've observe or expec
 
 So, we have a couple of missing values in two numeric variables (Total_Fat_g, Caffeine_mg) and in two factor variables (Milk, Size).
 
-### Categorical variables with a small number of missing values
+### Categorical or ordinal variables with a small number of missing values
 
-If there are only a couple of missing values in a factor variable, they are replaced by the 'majority class', that is, the most dominant value of that variable. When doing so, it is recommended to identify the dominant value among the subset of observations that are similar to the one with the missing value. For example, in our case, we can identify the dominant value for `Milk` in the category of beverages that the one with the missing value belongs to:
-```{r}
-milk_missing_category <- sb_drinks$Beverage_category[is.na(sb_drinks$Milk)]
-milk_missing_category
+If there are only a couple of missing values in a factor variable, they are replaced by the 'majority class', that is, the most dominant value of that variable. When doing so, it is recommended to identify the dominant value among the subset of observations that are similar to the one with the missing value. For example, in our case, we can identify the dominant value for `Milk` among the beverages that the one with the missing value belongs to, since 'Milk' and 'Beverage' proved to be significantly associated:
+
+```{r warning=FALSE}
+table(sb_drinks$Beverage, sb_drinks$Milk) |> chisq.test()
 ```
 
 ```{r}
-sb_drinks$Milk[sb_drinks$Beverage_category == milk_missing_category] |> table()
+milk_missing_beverage <- sb_drinks$Beverage[is.na(sb_drinks$Milk)]
+milk_missing_beverage
+```
+
+```{r}
+sb_drinks$Milk[sb_drinks$Beverage == milk_missing_beverage] |> table()
 ```
 
 As we have a tie between two values and the third close behind, let's see how things stand at the level of the overall data set
@@ -187,8 +192,7 @@ sb_drinks$Milk[is.na(sb_drinks$Milk)] <- "Nonfat_Milk"
 
 Note: a better approach would be to find k nearest neighbors of the instance with the missing `Milk` value, based on all the attributes (except the missing one) and to replace the missing value with the majority value of those k nearest neighbors.  
 
-Next, we need to handle the missing values in the `Size` variable. Since the size of a drink is fairly independent of beverage category or group (can be verified with the Chi-square test), we will use the majority class on the overall data set to fill out the missing values
-
+Next, we need to handle the missing values in the `Size` variable. Since almost any drink in Starbucks can be of any size, beverage category or group will not be much informative regarding the drink size (can be verified with the Chi-square test - using the `chisq.test()` function), we will use the majority class on the overall data set to fill out the missing values
 ```{r}
 table(sb_drinks$Size)
 ```
@@ -200,7 +204,9 @@ sb_drinks$Size[is.na(sb_drinks$Size)] <- "Grande"
 
 ### Numeric variables with a small number of missing values
 
-In case a numeric variable has a few missing values, we typically replace the missing values with the average value of the variable on a subset of observations that are similar - in "important ways" - to the observation(s) with the missing value. For example, in case of the missing value of the `Total_Fat_g` variable, we can find an instance or a couple of them that are most similar in `Trans_Fat_g`, `Saturated_Fat_g`, and `Calories` values. This can be done, for example, using the kNN algorithm. 
+In case a numeric variable has a few missing values, we typically replace the missing values with the average value of the variable on a subset of observations that are similar - in "important ways" - to the observation(s) with the missing value. 
+
+For example, in case of the missing value of the `Total_Fat_g` variable, we can find an instance or a couple of them that are most similar in `Trans_Fat_g`, `Saturated_Fat_g`, and `Calories` values. This can be done, for example, using the kNN algorithm. 
 
 Here, we will use a simpler approach - take the average on a group of observations that belong to the same (relevant) category as the instance(s) with the missing value(s). For example, for the total fat value, the size of the drink and the kind of milk used are relevant, so we will compute average `Total_Fat_g` on a subset determined by these two variables:
 ```{r}
@@ -237,13 +243,11 @@ print(caffeine_NA_size)
 
 Since here we have more than one missing value, we are using a loop to compute the average value on a relevant subset and then replace the missing values with the computed average value
 ```{r}
-caffeine_NA_size <- caffeine_NA_size[1] #since the two are the same
-
-for(cat in caffeine_NA_bev_cat) {
-  avg_caffeine <- median(sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == cat &
-                                              sb_drinks$Size == caffeine_NA_size], na.rm = T)
-  sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == cat &
-                          sb_drinks$Size == caffeine_NA_size &
+for(i in 1:2) {
+  avg_caffeine <- median(sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == caffeine_NA_bev_cat[i] &
+                                              sb_drinks$Size == caffeine_NA_size[i]], na.rm = T)
+  sb_drinks$Caffeine_mg[sb_drinks$Beverage_category == caffeine_NA_bev_cat[i] &
+                          sb_drinks$Size == caffeine_NA_size[i] &
                           is.na(sb_drinks$Caffeine_mg)] <- avg_caffeine
 }
 ```
@@ -326,7 +330,7 @@ Not very clear from the plot above as there are many more coffee drinks than oth
 ggplot(sb_drinks,
        aes(x = Is_coffe_drink, fill = HealthierChoice)) +
   geom_bar(position = "fill", width = 0.6) +
-  labs(x= "\nSize", y = "Proportion\n") +
+  labs(x= "\nIs coffe drink", y = "Proportion\n") +
   theme_minimal()
 ```
 Very small difference, suggesting that the `Is_coffe_drink` variable would be a poor predictor of the outcome variable
@@ -343,28 +347,28 @@ ggplot(sb_drinks,
 We can observe that coffee drinks with no milk or with nonfat milk are more likely to be healthier choice than non-coffee drinks with no milk, or non-fat milk. The opposite is true for soy milk. So, if we are working with a classification algorithm that can leverage interaction of variables (e.g., logistic regression), using the interaction of these two variables can bring some additional signal to the model. This also shows that even though `Is_coffe_drink` on its own is not relevant for prediction, in interaction with `Milk`, it can be relevant.     
 
 
-For continuous variables, we use histogram or probability density function to inspect the relation between an input variable and the outcome. In such plots, we examine the presence or extent of difference in the distribution of the variable's values for the different values of the outcome variable. For example, we can examine how relevant the quantity of proteins is for distinguishing between less and more healthy drink choices:  
+For continuous variables, we use histogram or probability density function to inspect the relation between an input variable and the outcome. In such plots, we examine the presence or extent of difference in the distribution of the input variable for the different values of the outcome variable. For example, we can examine how relevant the quantity of sodium is for distinguishing between less and more healthy drink choices:  
 ```{r}
 ggplot(sb_drinks,
-       aes(x = Protein_g, fill = HealthierChoice)) +
-  geom_density(alpha=0.65) +
+       aes(x = Sodium_mg, fill = HealthierChoice)) +
+  geom_density(alpha=0.45) +
   theme_minimal()
 ```
-We can observe a clear difference in the distributions: healthier choices tend to have lower quantity of proteins. So, the `Protein_g` variable is expected to be a relevant predictor.  
+We can observe a clear difference in the distributions: healthier choices tend to have lower quantity of sodium. So, the `Sodium_mg` variable is expected to be a relevant predictor.  
 
-Let's take one more more - for example, `Iron_DV`
+Let's take one more more - for example, `Dietary_Fibre_g`
 ```{r}
 ggplot(sb_drinks,
-       aes(x = Iron_DV, fill = HealthierChoice)) +
+       aes(x = Dietary_Fibre_g, fill = HealthierChoice)) +
   geom_density(alpha=0.65) +
   theme_minimal()
 ```
-Again, healthier choices tend to have lower values of iron and very different distribution than less healthy choices, suggesting that `Iron_DV` is also expected to be a good predictor of the outcome variable.
+Healthier choices tend to have higher values of dietary fiber and very different distribution than less healthy choices, suggesting that `Dietary_Fibre_g` is also expected to be a good predictor of the outcome variable.
 
 If it's easier for you, you may also use boxplots:
 ```{r}
 ggplot(sb_drinks,
-       aes(x = HealthierChoice, y = Iron_DV, fill = HealthierChoice)) +
+       aes(x = HealthierChoice, y = Sodium_mg, fill = HealthierChoice)) +
   geom_boxplot() +
   theme_minimal()
 ```
@@ -373,9 +377,6 @@ ggplot(sb_drinks,
 
 Finally, here is how you can quickly create plots for all factor and continuous variables:
 ```{r}
-# take the names of the factor variables
-factor_var_names = colnames(sb_drinks)[c(3,4,17)]
-
 # function for plotting a variable with the given name
 # the notation .data[[var_name]] in the code below allow us to access column from the 'current' data frame (in this case, sb_drinks) with the name given as the input variable of the function (var_name) 
 plot_factor_var <- function(var_name) {
@@ -386,15 +387,15 @@ plot_factor_var <- function(var_name) {
   theme_minimal()
 }
 
+# take the names of the factor variables
+factor_var_names = colnames(sb_drinks)[c(3,4,17,18)]
+
 # applying the plotting function to all factor variables
 lapply(factor_var_names, plot_factor_var)
 ```
 
 Similar for numeric variables
 ```{r}
-# take the names of the factor variables
-num_var_names = colnames(sb_drinks)[c(5:16)]
-
 # function for plotting a variable with the given name
 plot_num_var <- function(var_name) {
   ggplot(sb_drinks,
@@ -403,10 +404,16 @@ plot_num_var <- function(var_name) {
   theme_minimal()
 }
 
+# take the names of the factor variables
+num_var_names = colnames(sb_drinks)[c(5:16)]
+
 # applying the plotting function to all factor variables
 lapply(num_var_names, plot_num_var)
 ```
 
+```{r}
+summary(aov(sb_drinks$Vitamin_A_DV ~ sb_drinks$HealthierChoice))
+```
 
 
 
